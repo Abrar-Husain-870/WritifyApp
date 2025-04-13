@@ -1,6 +1,6 @@
 // API configuration
 const isProduction = window.location.hostname !== 'localhost';
-// Add type declaration for process.env
+// Add type declaration for process
 declare const process: {
   env: {
     REACT_APP_API_URL?: string;
@@ -9,7 +9,7 @@ declare const process: {
 };
 
 const API_URL = isProduction
-  ? (process.env.REACT_APP_API_URL || 'https://writified-backend.onrender.com')
+  ? (process.env.REACT_APP_API_URL || 'https://writifyapp.onrender.com')
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
 
 // Common fetch options with credentials
