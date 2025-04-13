@@ -224,7 +224,30 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use(session({
+
+// Passport serialization
+passport.serializeUser((user, done) => {
+    console.log('Serializing user:', user.id);
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        console.log('Deserializing user:', id);
+        const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+        if (result.rows.length > 0) {
+            done(null, result.rows[0]);
+        } else {
+            done(new Error('User not found'));
+        }
+    } catch (error) {
+        console.error('Deserialization error:', error);
+        done(error);
+    }
+});
+
+// Session configuration
+const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
@@ -234,10 +257,16 @@ app.use(session({
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
         sameSite: 'none',
-        path: '/',
-        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+        path: '/'
     }
-}));
+};
+
+// Configure session based on environment
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
+
+app.use(session(sessionConfig));
 
 // Passport initialization
 app.use(passport.initialize());
@@ -251,9 +280,11 @@ const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL ||
 
 // Function to validate university email
 const isValidUniversityEmail = (email) => {
-    const isValid = email.endsWith('@student.iul.ac.in');
-    console.log(`Email validation for ${email}: ${isValid}`);
-    return isValid;
+    // Temporarily disable email validation for testing
+    return true;
+    // const isValid = email.endsWith('@student.iul.ac.in');
+    // console.log(`Email validation for ${email}: ${isValid}`);
+    // return isValid;
 };
 
 // Google OAuth Strategy
@@ -261,7 +292,8 @@ passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: GOOGLE_CALLBACK_URL,
-    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+    proxy: true
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         // Check if the email is a valid university email
@@ -303,22 +335,6 @@ passport.use(new GoogleStrategy({
     }
 }));
 
-passport.serializeUser((user, done) => {
-    console.log('Serializing user:', user.id);
-    done(null, user.id);
-});
-
-passport.deserializeUser(async (id, done) => {
-    try {
-        console.log('Deserializing user:', id);
-        const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-        done(null, result.rows[0]);
-    } catch (error) {
-        console.error('Deserialization error:', error);
-        done(error);
-    }
-});
-
 // Define CORS middleware for auth routes
 const authCors = (req, res, next) => {
     const origin = req.headers.origin;
@@ -338,50 +354,62 @@ const authCors = (req, res, next) => {
     next();
 };
 
-// Auth routes
-app.get('/auth/google', authCors,
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+// Auth routes with better error handling
+app.get('/auth/google', authCors, (req, res, next) => {
+    console.log('Starting Google OAuth flow');
+    passport.authenticate('google', { 
+        scope: ['profile', 'email'],
+        prompt: 'select_account'
+    })(req, res, next);
+});
 
 app.get('/auth/google/callback', authCors,
-    (req, res, next) => {
-        passport.authenticate('google', (err, user, info) => {
-            console.log('Auth callback received:', { err, user, info });
-            
-            // Define the frontend URL based on environment
-            const frontendURL = process.env.FRONTEND_URL || 
-                (process.env.NODE_ENV === 'production'
-                    ? 'https://writified.vercel.app'
-                    : 'http://localhost:3000');
-            
-            if (err) {
-                console.error('Authentication error:', err);
-                return res.redirect(`${frontendURL}/login?error=server`);
-            }
-            
-            if (!user) {
-                console.log('Authentication failed:', info?.message);
-                return res.redirect(`${frontendURL}/login?error=unauthorized`);
-            }
-
-            req.logIn(user, (err) => {
-                if (err) {
-                    console.error('Login error:', err);
-                    return res.redirect(`${frontendURL}/login?error=server`);
-                }
-                return res.redirect(`${frontendURL}/dashboard`);
-            });
-        })(req, res, next);
+    passport.authenticate('google', { 
+        failureRedirect: '/login',
+        failureMessage: true
+    }),
+    (req, res) => {
+        console.log('Google OAuth callback successful');
+        res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
     }
 );
 
-// Auth status endpoint
+// Auth status endpoint with detailed logging
 app.get('/auth/status', authCors, (req, res) => {
+    console.log('Auth status check - Session:', req.session);
+    console.log('Auth status check - User:', req.user);
+    console.log('Auth status check - Is Authenticated:', req.isAuthenticated());
+    
     if (req.isAuthenticated()) {
-        res.json({ isAuthenticated: true, user: req.user });
+        res.json({ 
+            isAuthenticated: true, 
+            user: req.user,
+            session: req.session.id 
+        });
     } else {
-        res.json({ isAuthenticated: false });
+        res.json({ 
+            isAuthenticated: false,
+            message: 'No active session'
+        });
     }
+});
+
+// Logout route with session cleanup
+app.get('/auth/logout', authCors, (req, res) => {
+    console.log('Logging out user:', req.user?.id);
+    req.logout((err) => {
+        if (err) {
+            console.error('Logout error:', err);
+            return res.status(500).json({ error: 'Logout failed' });
+        }
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Session destruction error:', err);
+            }
+            res.clearCookie('connect.sid');
+            res.json({ message: 'Logged out successfully' });
+        });
+    });
 });
 
 // Middleware to check if user is authenticated
