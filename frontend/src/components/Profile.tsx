@@ -362,18 +362,17 @@ const Profile: React.FC = () => {
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <p className="mt-1 text-sm text-gray-500">
-                                    For best results, use direct image URLs from ImageKit or other image hosting services.
+                                    For best results, use direct image URLs from ImageKit's free image hosting tool or other image hosting services.
                                 </p>
                                 <div className="mt-2 p-3 bg-blue-50 rounded text-sm">
-                                    <p className="font-medium text-blue-700">How to use ImageKit for image hosting:</p>
+                                    <p className="font-medium text-blue-700">How to use ImageKit's free image hosting:</p>
                                     <ol className="list-decimal pl-5 mt-1 text-blue-600 space-y-1">
-                                        <li>Go to <a href="https://imagekit.io" target="_blank" rel="noopener noreferrer" className="underline">imagekit.io</a> and create a free account</li>
-                                        <li>Click on "Media Library" and upload your image</li>
-                                        <li>Click on the uploaded image and select "Copy URL"</li>
-                                        <li>Make sure to select "Original Image" in the URL options</li>
+                                        <li>Go to <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">ImageKit Free Image Hosting</a></li>
+                                        <li>Click "Upload Image" and select your file (no account required)</li>
+                                        <li>Once uploaded, click "Copy URL" to get the direct image link</li>
                                         <li>Paste the copied URL here</li>
                                     </ol>
-                                    <p className="mt-2 text-blue-700">Note: ImageKit offers a generous free tier with 20GB storage and good CDN performance.</p>
+                                    <p className="mt-2 text-blue-700">Note: Images are hosted for free and no signup is required.</p>
                                 </div>
                                 {portfolio.sample_work_image && (
                                     <div className="mt-4 border p-3 rounded-md">
