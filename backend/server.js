@@ -204,12 +204,19 @@ if (process.env.NODE_ENV === 'production') {
 
 // Define allowed origins based on environment
 const allowedOrigins = process.env.FRONTEND_URL 
-    ? [process.env.FRONTEND_URL, 'https://writify-nine.vercel.app', 'http://localhost:3000']
-    : ['https://writified.vercel.app', 'https://writify-nine.vercel.app', 'http://localhost:3000'];
+    ? [process.env.FRONTEND_URL, 'https://writify-app-huxg.vercel.app', 'https://writify-nrgkhzjtb-abrar-husains-projects.vercel.app', 'http://localhost:3000']
+    : ['https://writify-app-huxg.vercel.app', 'https://writify-nrgkhzjtb-abrar-husains-projects.vercel.app', 'http://localhost:3000'];
 
 // Middleware setup
 app.use(cors({
-    origin: allowedOrigins,
+    origin: function(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log('Blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -223,11 +230,12 @@ app.use(session({
     saveUninitialized: false,
     proxy: true,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
         sameSite: 'none',
-        path: '/'
+        path: '/',
+        domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
     }
 }));
 
@@ -238,7 +246,7 @@ app.use(passport.session());
 // Add this before your passport strategy
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 
     (process.env.NODE_ENV === 'production'
-        ? 'https://writified-backend.onrender.com/auth/google/callback'
+        ? 'https://writifyapp.onrender.com/auth/google/callback'
         : 'http://localhost:5000/auth/google/callback');
 
 // Function to validate university email
