@@ -280,11 +280,9 @@ const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL ||
 
 // Function to validate university email
 const isValidUniversityEmail = (email) => {
-    // Temporarily disable email validation for testing
-    return true;
-    // const isValid = email.endsWith('@student.iul.ac.in');
-    // console.log(`Email validation for ${email}: ${isValid}`);
-    // return isValid;
+    const isValid = email.endsWith('@student.iul.ac.in');
+    console.log(`Email validation for ${email}: ${isValid}`);
+    return isValid;
 };
 
 // Google OAuth Strategy
@@ -302,10 +300,10 @@ passport.use(new GoogleStrategy({
         
         if (!isValidUniversityEmail(email)) {
             console.log('Email validation failed');
-            return done(null, false, { message: 'Only university students can sign up!' });
+            return done(null, false, { message: 'Only university students with .student.iul.ac.in email can sign up!' });
         }
 
-        console.log('Email validation passed, checking user in database');
+        // Check if user exists in database
         const userResult = await pool.query(
             'SELECT * FROM users WHERE google_id = $1',
             [profile.id]
