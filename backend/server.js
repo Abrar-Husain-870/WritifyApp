@@ -363,14 +363,27 @@ app.get('/auth/google', authCors, (req, res, next) => {
 
 app.get('/auth/google/callback', authCors,
     passport.authenticate('google', { 
-        failureRedirect: '/login',
-        failureMessage: true
+        failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth`,
+        failureMessage: true,
+        session: true
     }),
     (req, res) => {
         console.log('Google OAuth callback successful');
         res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
     }
 );
+
+// Error handling middleware for authentication
+app.use((err, req, res, next) => {
+    if (err) {
+        console.error('Authentication error:', err);
+        return res.status(401).json({
+            error: 'Authentication Error',
+            message: err.message || 'Only university students with .student.iul.ac.in email can sign up!'
+        });
+    }
+    next();
+});
 
 // Auth status endpoint with detailed logging
 app.get('/auth/status', authCors, (req, res) => {
