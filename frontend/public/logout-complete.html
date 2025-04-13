@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logout Complete</title>
+    <script>
+        // Function to clear all cookies
+        function clearAllCookies() {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i];
+                const eqPos = cookie.indexOf('=');
+                const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                if (name) {
+                    // Try multiple combinations to ensure complete cookie removal
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+                }
+            }
+        }
+
+        // Send a message to the parent window that logout is complete
+        window.onload = function() {
+            // Clear all cookies first
+            clearAllCookies();
+            
+            // Set logout flags in localStorage and sessionStorage
+            try {
+                localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+                sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+                console.log('Logout flags set successfully');
+            } catch (e) {
+                console.error('Error setting logout flags:', e);
+            }
+            
+            // Send message to parent window
+            try {
+                window.parent.postMessage('logout_complete', '*');
+                console.log('Logout complete message sent to parent');
+            } catch (e) {
+                console.error('Error sending logout message:', e);
+                // Fallback - redirect to login page without cache-busting parameter
+                window.parent.location.href = '/login';
+            }
+            
+            // Fallback - redirect after a delay if nothing else happens
+            setTimeout(function() {
+                window.parent.location.href = '/login';
+            }, 2000);
+        };
+    </script>
+</head>
+<body>
+    <p>Logout complete. Redirecting to login page...</p>
+</body>
+</html>
