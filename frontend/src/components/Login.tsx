@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { API } from '../utils/api';
 
 interface LoginProps {}
 
 const Login: React.FC<LoginProps> = () => {
     const [loading, setLoading] = useState<boolean>(false);
+    const [guestLoading, setGuestLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const location = useLocation();
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Check for error in URL params
@@ -116,6 +118,49 @@ const Login: React.FC<LoginProps> = () => {
             setLoading(false);
         }
     };
+    
+    // Handle guest login
+    const handleGuestLogin = async () => {
+        setGuestLoading(true);
+        setError(null);
+        
+        try {
+            // Clear any existing session data
+            clearAllCookies();
+            
+            // Clear logout flags
+            localStorage.removeItem('FORCE_LOGOUT');
+            sessionStorage.removeItem('FORCE_LOGOUT');
+            
+            const response = await fetch(API.auth.guestLogin, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to create guest session');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Store guest flag in session storage
+                sessionStorage.setItem('GUEST_MODE', 'true');
+                
+                // Navigate to dashboard
+                navigate('/dashboard');
+            } else {
+                throw new Error(data.message || 'Failed to login as guest');
+            }
+        } catch (error) {
+            console.error('Guest login error:', error);
+            setError('Failed to continue as guest. Please try again.');
+            setGuestLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-6 sm:py-12 px-4 sm:px-6 lg:px-8">
@@ -159,7 +204,7 @@ const Login: React.FC<LoginProps> = () => {
                             </p>
                             <button
                                 onClick={handleGoogleLogin}
-                                disabled={loading}
+                                disabled={loading || guestLoading}
                                 className={`w-full flex justify-center items-center py-3 px-6 border border-transparent rounded-lg shadow-md text-base font-medium text-white transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                                     loading ? 'bg-blue-400 dark:bg-blue-500 cursor-not-allowed' : 'bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800'
                                 }`}
@@ -177,9 +222,35 @@ const Login: React.FC<LoginProps> = () => {
                                 {loading ? 'Signing in...' : 'Sign in with Google'}
                             </button>
                             
-                            <div className="mt-8 text-center">
+                            <div className="relative my-4 flex items-center justify-center">
+                                <div className="absolute w-full border-t border-gray-300 dark:border-gray-600"></div>
+                                <div className="relative px-4 bg-white dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400">OR</div>
+                            </div>
+                            
+                            <button
+                                onClick={handleGuestLogin}
+                                disabled={loading || guestLoading}
+                                className={`w-full flex justify-center items-center py-3 px-6 border border-gray-300 dark:border-gray-600 rounded-lg shadow-md text-base font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-600 ${
+                                    guestLoading ? 'opacity-70 cursor-not-allowed' : ''
+                                }`}
+                            >
+                                {guestLoading ? (
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700 dark:text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                )}
+                                {guestLoading ? 'Continuing...' : 'Continue as Guest'}
+                            </button>
+                            
+                            <div className="mt-6 text-center">
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Note: Only university email accounts (@student.iul.ac.in) are allowed to access this application
+                                    Note: Only university email accounts (@student.iul.ac.in) are allowed for full access.
+                                    <br />Guest mode provides limited access for demonstration purposes only.
                                 </p>
                             </div>
                         </div>

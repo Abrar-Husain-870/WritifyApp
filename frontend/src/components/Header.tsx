@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DarkModeToggle from './DarkModeToggle';
 import { API } from '../utils/api';
+import { GuestContext } from '../App';
 
 interface HeaderProps {
     title: string;
@@ -10,8 +11,19 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
+    const { isGuest, setIsGuest } = useContext(GuestContext);
 
     const handleSignOut = () => {
+        // Check if this is a guest session
+        if (isGuest) {
+            // For guest users, just clear the guest flag and redirect to login
+            setIsGuest(false);
+            sessionStorage.removeItem('GUEST_MODE');
+            navigate('/login');
+            return;
+        }
+        
+        // Regular user logout process
         // 1. Save theme preference
         const currentThemePreference = localStorage.getItem('darkMode');
         
@@ -129,19 +141,21 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                         </svg>
                     </button>
-                    <button
-                        onClick={() => navigate('/profile')}
-                        className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                    >
-                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </button>
+                    {!isGuest && (
+                        <button
+                            onClick={() => navigate('/profile')}
+                            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        >
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </button>
+                    )}
                     <button
                         onClick={handleSignOut}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800"
                     >
-                        Sign Out
+                        {isGuest ? 'Exit Guest Mode' : 'Sign Out'}
                     </button>
                 </div>
             </div>

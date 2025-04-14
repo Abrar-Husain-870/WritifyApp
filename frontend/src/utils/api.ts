@@ -34,6 +34,7 @@ export const API = {
     me: `${API_URL}/api/auth/me`,
     status: `${API_URL}/auth/status`,
     google: `${API_URL}/auth/google`,
+    guestLogin: `${API_URL}/auth/guest-login`,
   },
   
   // User endpoints

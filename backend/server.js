@@ -474,6 +474,17 @@ app.get('/auth/status', (req, res) => {
         console.log('Auth status check - Session ID:', req.session?.id);
         console.log('Auth status check - Is Authenticated:', req.isAuthenticated?.());
         
+        // Check for guest session
+        if (req.session && req.session.guestMode) {
+            console.log('Guest session detected');
+            return res.status(200).json({
+                isAuthenticated: true,
+                user: req.session.guestUser,
+                isGuest: true,
+                session: req.session.id
+            });
+        }
+        
         // Always return 200 status code to avoid CORS issues
         if (!req.session) {
             return res.status(200).json({
@@ -499,6 +510,46 @@ app.get('/auth/status', (req, res) => {
         return res.status(200).json({
             isAuthenticated: false,
             message: 'Error checking authentication status'
+        });
+    }
+});
+
+// Guest login endpoint - allows recruiters to explore the app without authentication
+app.post('/auth/guest-login', authCors, (req, res) => {
+    try {
+        console.log('Guest login initiated');
+        
+        // Create a guest user with limited permissions
+        const guestUser = {
+            id: 'guest-' + Date.now(),
+            name: 'Guest User',
+            email: 'guest@example.com',
+            profile_picture: null,
+            role: 'guest',
+            writer_status: 'inactive',
+            created_at: new Date().toISOString(),
+            isGuest: true
+        };
+        
+        // Store guest user in session only (not in database)
+        req.session.guestMode = true;
+        req.session.guestUser = guestUser;
+        
+        // Set session expiration to 2 hours
+        req.session.cookie.maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        
+        console.log('Guest login successful');
+        return res.status(200).json({
+            success: true,
+            user: guestUser,
+            isGuest: true,
+            message: 'Guest login successful. You can now explore the app with limited access.'
+        });
+    } catch (error) {
+        console.error('Guest login error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to create guest session'
         });
     }
 });

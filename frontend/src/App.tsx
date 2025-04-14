@@ -1,5 +1,5 @@
 // Working version - redeployed on April 6, 2025
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -14,6 +14,17 @@ import Tutorial from './components/Tutorial';
 import AccountDeleted from './components/AccountDeleted';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { API } from './utils/api';
+
+// Create a context for guest mode
+interface GuestContextType {
+  isGuest: boolean;
+  setIsGuest: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export const GuestContext = createContext<GuestContextType>({
+  isGuest: false,
+  setIsGuest: () => {},
+});
 
 // Helper function to clear all cookies
 const clearAllCookies = () => {
@@ -49,6 +60,7 @@ const clearAllCookies = () => {
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
 
   useEffect(() => {
     // First, check the URL for a force parameter that indicates a forced logout
@@ -161,6 +173,23 @@ function App() {
         const data = await response.json();
         // Removed detailed auth response logging for privacy
         
+        // Check if this is a guest session
+        if (data.isAuthenticated && data.isGuest) {
+          console.log('Guest session detected');
+          setIsAuthenticated(true);
+          setIsGuest(true);
+          
+          // Clear any existing logout flags to ensure we stay logged in
+          localStorage.removeItem('FORCE_LOGOUT');
+          sessionStorage.removeItem('FORCE_LOGOUT');
+          localStorage.removeItem('user_logged_out');
+          sessionStorage.removeItem('manual_logout');
+          
+          // Set guest mode flag in session storage
+          sessionStorage.setItem('GUEST_MODE', 'true');
+          return;
+        }
+        
         // Verify that the user has a valid university email if they are authenticated
         if (data.isAuthenticated && data.user && data.user.email) {
           const email = data.user.email;
@@ -180,6 +209,7 @@ function App() {
             clearAllCookies();
             
             setIsAuthenticated(false);
+            setIsGuest(false);
             
             // Redirect to login page with unauthorized error
             window.location.href = '/login?error=unauthorized&force=true';
@@ -195,10 +225,19 @@ function App() {
           localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
           sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
           setIsAuthenticated(false);
+          setIsGuest(false);
+          sessionStorage.removeItem('GUEST_MODE');
         } else {
           // Only set authenticated if we're actually authenticated
           // AND we don't have any logout flags
           setIsAuthenticated(true);
+          
+          // Check if this is a guest session from session storage
+          if (sessionStorage.getItem('GUEST_MODE') === 'true') {
+            setIsGuest(true);
+          } else {
+            setIsGuest(false);
+          }
           
           // Clear any existing logout flags to ensure we stay logged in
           localStorage.removeItem('FORCE_LOGOUT');
@@ -248,9 +287,11 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Router>
-        <AppContent isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
-      </Router>
+      <GuestContext.Provider value={{ isGuest, setIsGuest }}>
+        <Router>
+          <AppContent isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
+        </Router>
+      </GuestContext.Provider>
     </ThemeProvider>
   );
 }
@@ -258,6 +299,7 @@ function App() {
 // Separate component to access useLocation hook
 const AppContent = ({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: boolean | null, setIsAuthenticated: React.Dispatch<React.SetStateAction<boolean | null>> }) => {
   const location = useLocation();
+  const { isGuest, setIsGuest } = useContext(GuestContext);
   
   // Reset authentication state when account-deleted page is accessed
   // or when there's an unauthorized error in the URL
@@ -270,6 +312,8 @@ const AppContent = ({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: 
     if (location.pathname === '/account-deleted' || errorParam === 'unauthorized') {
       console.log('Detected account-deleted page or unauthorized error, resetting authentication state');
       setIsAuthenticated(false);
+      setIsGuest(false);
+      sessionStorage.removeItem('GUEST_MODE');
       
       // If there's an unauthorized error and force parameter, set logout flags instead of clearing them
       if (errorParam === 'unauthorized' && forceParam === 'true') {
@@ -298,9 +342,9 @@ const AppContent = ({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: 
         <Route path="/find-writer" element={isAuthenticated ? <FindWriter /> : <Navigate to="/login" replace />} />
         <Route path="/writer/:id" element={isAuthenticated ? <WriterProfile /> : <Navigate to="/login" replace />} />
         <Route path="/browse-requests" element={isAuthenticated ? <BrowseRequests /> : <Navigate to="/login" replace />} />
-        <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" replace />} />
+        <Route path="/profile" element={isAuthenticated && !isGuest ? <Profile /> : isGuest ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         <Route path="/my-assignments" element={isAuthenticated ? <MyAssignments /> : <Navigate to="/login" replace />} />
-        <Route path="/my-ratings" element={isAuthenticated ? <MyRatings /> : <Navigate to="/login" replace />} />
+        <Route path="/my-ratings" element={isAuthenticated && !isGuest ? <MyRatings /> : isGuest ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         <Route path="/tutorial" element={isAuthenticated ? <Tutorial /> : <Navigate to="/login" replace />} />
         <Route path="/account-deleted" element={<AccountDeleted />} />
         <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />

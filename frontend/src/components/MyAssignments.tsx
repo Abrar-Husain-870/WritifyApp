@@ -1,8 +1,9 @@
-import React, { useState, useEffect, ReactElement } from 'react';
+import React, { useState, useEffect, ReactElement, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import RatingModal from './RatingModal';
 import { API } from '../utils/api';
+import { GuestContext } from '../App';
 
 interface User {
   id: number;
@@ -37,12 +38,13 @@ const MyAssignments: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<'client' | 'writer' | null>(null);
+  const [userRole, setUserRole] = useState<'client' | 'writer' | 'guest' | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [updatingWhatsApp, setUpdatingWhatsApp] = useState(false);
+  const { isGuest } = useContext(GuestContext);
 
   useEffect(() => {
     const fetchAssignments = async () => {
@@ -66,18 +68,18 @@ const MyAssignments: React.FC = () => {
         
         const data = await response.json();
         console.log('Assignments data:', data);
-        setAssignments(data.assignments);
+        setAssignments(data.assignments || []);
         setUserRole(data.role);
-      } catch (error) {
-        console.error('Error fetching assignments:', error);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching assignments:', err);
         setError('Failed to load assignments. Please try again later.');
-      } finally {
         setLoading(false);
       }
     };
 
     fetchAssignments();
-  }, [navigate]);
+  }, [isGuest, navigate]);
 
   const handleCompleteAssignment = async (assignmentId: number) => {
     try {
