@@ -55,7 +55,7 @@ const FindWriter: React.FC = () => {
                     total_ratings: 24,
                     writer_status: 'active',
                     university_stream: 'Computer Science',
-                    sample_work_image: 'https://via.placeholder.com/150'
+                    sample_work_image: 'https://media-hosting.imagekit.io/ab67fffb98ea4bf0/Handwriting3.jpg?Expires=1839238770&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=vCoxFFJQ1KxmcwXusH9gawk00kHiJKLsAbal-ZxPeWic90IlvbPTXQsyn3fiqxOKH3OwDxlDUOeGgl794d5w75Ijh-ccWNgMeK4Ycgfcxrp8ol-N69i~TAZ6mxxYfUz-gntIF9ei3vCaaXXEsSheuCsCW7S6hAS9Iy9SCTiTykIF7Yo2aDNcTGD1XDrRo1qjkdT9MgzNXFvP64P~F3-LS7TOD9~qy~oYAOnikpPkZAh0lveOJb-Vl7z2wPfKwbDwQO15S-RRxE8IuD9JrN~qmVj157aJr4f1CajnOxISn-g2hK-HXwjBVQZiY4Cud~bZrGPLqmHJJ4dyYh9ySyBXhw__'
                 },
                 {
                     id: 1002,
@@ -64,7 +64,7 @@ const FindWriter: React.FC = () => {
                     total_ratings: 18,
                     writer_status: 'active',
                     university_stream: 'Business Administration',
-                    sample_work_image: 'https://via.placeholder.com/150'
+                    sample_work_image: 'https://media-hosting.imagekit.io/cd4b337c4584496c/Handwriting2.jpg?Expires=1839238770&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=bTtEshEmgne6S0xCa7ECPbXiUTY4EHdSKroQ63TeiyRFBQ58KmW-VZwIvz3ggPnW423Cj31meD9q~fjBqDulfg03j0R1WHALIIu~0wl4rfbwrYpWs9QMZBNear9sT0RT8OU7jyBUMOTl3nuO4jq98xA-ueFwyqqryBarhR7En6vdf-humWLI0XZYt40uxEu5k8MQOa8BJ6coWhxd7Q2eIMfxFr7ZDRb7A7XZoKRi-PsBcprRXW5iUbxGKUjDd2bj0LT0NCuoF36BIgbC7RXVCedngWmrDzpWUhRqzCpDk34FKeDjIGYcVc2GYZLVsQ1kNPULFcALi1KBlV4Iyqb1vQ__'
                 },
                 {
                     id: 1003,
@@ -73,7 +73,7 @@ const FindWriter: React.FC = () => {
                     total_ratings: 32,
                     writer_status: 'busy',
                     university_stream: 'Engineering',
-                    sample_work_image: 'https://via.placeholder.com/150'
+                    sample_work_image: 'https://media-hosting.imagekit.io/f920ed4acd8a4205/Handwriting1.jpg?Expires=1839238770&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=NLW1J-XAEaXxKszQdJsAc5lO9q~AX~RIs7w9nAXRS1ApBekt3Dt~nG5jrqKjd0clq-WZVTTGOVlQ7DbbtHn0rVjJusYWLQJ1EwuHR1yfcBoF-fcVDOPHW1MB63VGOqVKmQU7TfJ1JOBA13yOkJnEfT4Y7pkHaiplC1LO0X-K3p801Y5x8HIEE9VRxUDuCN43g~x74xNYjQbdDFUUgKXvwgtnVBtfOVD9FFgEhr1pIqPd8MO9gxlGuEhTdBrm2cTlyvmaBvEIfmyCu79I6qlUBB0N5I8S97r~8EdhxxYfN4eQ1ZExars0vaij5puvdKiqp29JCmEhTSn5ksBmnVvzYg__'
                 }
             ];
             setWriters(sampleWriters);
