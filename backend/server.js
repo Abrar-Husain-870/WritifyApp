@@ -298,12 +298,12 @@ passport.use(new GoogleStrategy({
         const email = profile.emails[0].value;
         console.log('Processing OAuth callback for email:', email);
         
-        if (!isValidUniversityEmail(email)) {
-            console.log('Email validation failed');
-            return done(null, false, { message: 'Only university students with .student.iul.ac.in email can sign up!' });
+        if (!email.endsWith('@student.iul.ac.in')) {
+            console.log('Email validation failed for:', email);
+            return done(new Error('Only university students with .student.iul.ac.in email can sign up!'), null);
         }
 
-        // Check if user exists in database
+        console.log('Email validation passed, checking user in database');
         const userResult = await pool.query(
             'SELECT * FROM users WHERE google_id = $1',
             [profile.id]
@@ -387,6 +387,13 @@ app.use((err, req, res, next) => {
 
 // Auth status endpoint with detailed logging
 app.get('/auth/status', authCors, (req, res) => {
+    if (!req.session) {
+        return res.status(200).json({
+            isAuthenticated: false,
+            message: 'No session found'
+        });
+    }
+
     console.log('Auth status check - Session:', req.session);
     console.log('Auth status check - User:', req.user);
     console.log('Auth status check - Is Authenticated:', req.isAuthenticated());
@@ -398,7 +405,7 @@ app.get('/auth/status', authCors, (req, res) => {
             session: req.session.id 
         });
     } else {
-        res.json({ 
+        res.status(200).json({ 
             isAuthenticated: false,
             message: 'No active session'
         });
