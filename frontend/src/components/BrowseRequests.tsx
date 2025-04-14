@@ -234,7 +234,7 @@ const BrowseRequests: React.FC = () => {
             
             if (acceptedRequest) {
                 // Create a WhatsApp message with assignment details
-                const message = `Hello, I'm accepting your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). This is regarding your ${acceptedRequest.assignment_type.toLowerCase()} assignment due on ${new Date(acceptedRequest.deadline).toLocaleDateString()}. I'll start working on it right away. Please let me know if you have any specific requirements or additional details.`;
+                const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
                 let phoneNumber = data.client_whatsapp || '';
