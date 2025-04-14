@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { exitGuestMode } from '../utils/auth';
 
 interface Client {
     id: number;
@@ -37,7 +38,7 @@ const BrowseRequests: React.FC = () => {
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<number | null>(null);
     const [guestActionAttempt, setGuestActionAttempt] = useState<number | null>(null);
 
-    const { isGuest, exitGuestMode } = useContext(GuestContext);
+    const { isGuest } = useContext(GuestContext);
 
     useEffect(() => {
         if (isGuest) {
@@ -425,7 +426,9 @@ const BrowseRequests: React.FC = () => {
                                                 <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-md">
                                                     <p className="text-sm text-yellow-700 dark:text-yellow-200 text-center">
                                                         Please <button 
-                                                            onClick={() => exitGuestMode()} 
+                                                            onClick={() => {
+                                                                exitGuestMode();
+                                                            }} 
                                                             className="font-medium text-blue-600 hover:text-blue-800 underline"
                                                         >sign in</button> first to use this feature
                                                     </p>

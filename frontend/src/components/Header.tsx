@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DarkModeToggle from './DarkModeToggle';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { logout, exitGuestMode as forceExitGuestMode } from '../utils/auth';
 
 interface HeaderProps {
     title: string;
@@ -17,95 +18,12 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
         // Check if this is a guest session
         if (isGuest) {
             // For guest users, call exitGuestMode function from GuestContext
-            exitGuestMode();
+            forceExitGuestMode();
             return;
         }
         
-        // Regular user logout process
-        // 1. Save theme preference
-        const currentThemePreference = localStorage.getItem('darkMode');
-        
-        // 2. Set permanent logout flags in both localStorage and sessionStorage
-        localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-        sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-        
-        // 3. Define a function to handle the complete client-side logout
-        const completeClientLogout = () => {
-            // Clear localStorage (except theme)
-            const themeValue = localStorage.getItem('darkMode');
-            localStorage.clear();
-            if (themeValue) {
-                localStorage.setItem('darkMode', themeValue);
-            }
-            
-            // Keep the logout flag
-            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            
-            // Clear sessionStorage but keep the logout flag
-            const logoutFlag = sessionStorage.getItem('FORCE_LOGOUT');
-            sessionStorage.clear();
-            sessionStorage.setItem('FORCE_LOGOUT', logoutFlag || Date.now().toString());
-            
-            // Clear any auth-specific items that might be stored
-            localStorage.removeItem('user');
-            localStorage.removeItem('token');
-            localStorage.removeItem('auth');
-            localStorage.removeItem('session');
-            sessionStorage.removeItem('user');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('auth');
-            sessionStorage.removeItem('session');
-            
-            // Super aggressive cookie clearing
-            // First, get all cookie names
-            const cookieNames = document.cookie.split(';')
-                .map(cookie => cookie.trim().split('=')[0])
-                .filter(name => name);
-            
-            // Try multiple combinations of domain and path to ensure complete cookie removal
-            const hostname = window.location.hostname;
-            // Include the hostname without www if it has www
-            const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
-            // Include just the domain part (e.g., example.com from sub.example.com)
-            const domainParts = hostname.split('.');
-            const topDomain = domainParts.length > 1 ? 
-                domainParts.slice(domainParts.length - 2).join('.') : hostname;
-            
-            const domains = [
-                hostname,
-                hostnameWithoutWWW,
-                topDomain,
-                '',
-                'localhost',
-                null
-            ];
-            
-            const paths = ['/', '/api', '/auth', '/api/auth', '', null];
-            
-            // For each cookie, try all domain/path combinations
-            cookieNames.forEach(name => {
-                domains.forEach(domain => {
-                    paths.forEach(path => {
-                        // Clear with various combinations
-                        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                            (path ? `; path=${path}` : '') + 
-                            (domain ? `; domain=${domain}` : '');
-                        
-                        // Also try with secure and httpOnly flags
-                        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                            (path ? `; path=${path}` : '') + 
-                            (domain ? `; domain=${domain}` : '') +
-                            '; secure';
-                    });
-                });
-            });
-            
-            // Force navigation to login page with cache-busting parameter
-            window.location.href = `/login?t=${Date.now()}&force=true`;
-        };
-        
-        // Skip server-side logout entirely and use client-side logout only
-        completeClientLogout();
+        // For regular users
+        logout();
     };
 
     return (

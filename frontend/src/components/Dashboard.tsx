@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { exitGuestMode } from '../utils/auth';
 
 interface User {
     id: number;
@@ -14,7 +15,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const { isGuest, exitGuestMode } = useContext(GuestContext);
+    const { isGuest } = useContext(GuestContext);
 
     useEffect(() => {
         if (isGuest) {
@@ -48,6 +49,10 @@ const Dashboard: React.FC = () => {
         });
     }, [isGuest]);
 
+    const handleExitGuestMode = () => {
+        exitGuestMode();
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Header */}
@@ -69,7 +74,7 @@ const Dashboard: React.FC = () => {
                             </div>
                             <div className="mt-3">
                                 <button
-                                    onClick={exitGuestMode}
+                                    onClick={handleExitGuestMode}
                                     className="text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:text-yellow-600 dark:hover:text-yellow-100 transition-colors"
                                 >
                                     Sign in with your university email for full access →

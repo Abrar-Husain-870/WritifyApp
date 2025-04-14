@@ -14,6 +14,7 @@ import Tutorial from './components/Tutorial';
 import AccountDeleted from './components/AccountDeleted';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { API } from './utils/api';
+import { clearAllCookies, exitGuestMode as forceExitGuestMode } from './utils/auth';
 
 // Create a context for guest mode
 interface GuestContextType {
@@ -28,35 +29,22 @@ export const GuestContext = createContext<GuestContextType>({
   exitGuestMode: () => {}
 });
 
-// Helper function to clear all cookies
-const clearAllCookies = () => {
-  document.cookie.split(';').forEach(cookie => {
-    const [name] = cookie.trim().split('=');
-    if (!name) return;
-    
-    // Clear with multiple domain/path combinations
-    const hostname = window.location.hostname;
-    const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
-    const domainParts = hostname.split('.');
-    const topDomain = domainParts.length > 1 ? 
-      domainParts.slice(domainParts.length - 2).join('.') : hostname;
-      
-    const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
-    const paths = ['/', '/api', '/auth', '/api/auth', '', null];
-    
-    domains.forEach(domain => {
-      paths.forEach(path => {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-          (path ? `; path=${path}` : '') + 
-          (domain ? `; domain=${domain}` : '');
-          
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-          (path ? `; path=${path}` : '') + 
-          (domain ? `; domain=${domain}` : '') + 
-          '; secure';
-      });
-    });
-  });
+// Helper function to completely clear all authentication state
+export const clearAllAuthState = () => {
+  // Clear all cookies
+  clearAllCookies();
+  
+  // Clear all localStorage items
+  localStorage.clear();
+  
+  // Clear all sessionStorage items
+  sessionStorage.clear();
+  
+  // Set logout flags to prevent automatic login
+  localStorage.setItem('FORCE_LOGOUT', 'true');
+  sessionStorage.setItem('FORCE_LOGOUT', 'true');
+  localStorage.setItem('user_logged_out', 'true');
+  sessionStorage.setItem('manual_logout', 'true');
 };
 
 function App() {
@@ -86,33 +74,7 @@ function App() {
           console.log('Logout flag or force parameter detected, preventing automatic login');
           
           // Aggressively clear all auth-related cookies
-          const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
-          cookieNames.forEach(name => {
-            if (!name) return;
-            
-            // Clear with multiple domain/path combinations
-            const hostname = window.location.hostname;
-            const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
-            const domainParts = hostname.split('.');
-            const topDomain = domainParts.length > 1 ? 
-                domainParts.slice(domainParts.length - 2).join('.') : hostname;
-                
-            const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
-            const paths = ['/', '/api', '/auth', '/api/auth', '', null];
-            
-            domains.forEach(domain => {
-                paths.forEach(path => {
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                        (path ? `; path=${path}` : '') + 
-                        (domain ? `; domain=${domain}` : '');
-                        
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                        (path ? `; path=${path}` : '') + 
-                        (domain ? `; domain=${domain}` : '') + 
-                        '; secure';
-                });
-            });
-          });
+          clearAllCookies();
           
           // Set as not authenticated
           setIsAuthenticated(false);
@@ -198,13 +160,7 @@ function App() {
       <GuestContext.Provider value={{
         isGuest,
         setIsGuest,
-        exitGuestMode: () => {
-          setIsGuest(false);
-          sessionStorage.removeItem('GUEST_MODE');
-          sessionStorage.removeItem('GUEST_USER');
-          clearAllCookies();
-          window.location.href = '/login';
-        }
+        exitGuestMode: forceExitGuestMode
       }}>
         <Router>
           <Routes>
@@ -228,6 +184,5 @@ function App() {
     </ThemeProvider>
   );
 }
-
 
 export default App;
