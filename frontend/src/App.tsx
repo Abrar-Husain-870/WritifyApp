@@ -124,6 +124,22 @@ function App() {
           setIsGuest(true);
           setIsAuthenticated(true);
           setIsLoading(false);
+          
+          // Make sure we have a guest user object
+          if (!sessionStorage.getItem('GUEST_USER')) {
+            // Create a default guest user if missing
+            const guestUser = {
+              id: 'guest-' + Date.now(),
+              name: 'Guest User',
+              email: 'guest@example.com',
+              profile_picture: null,
+              role: 'guest',
+              writer_status: 'inactive',
+              created_at: new Date().toISOString(),
+              isGuest: true
+            };
+            sessionStorage.setItem('GUEST_USER', JSON.stringify(guestUser));
+          }
           return;
         }
 

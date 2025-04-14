@@ -155,8 +155,9 @@ const Login: React.FC<LoginProps> = () => {
             
             console.log('Guest mode enabled, redirecting to dashboard');
             
-            // Navigate to dashboard
-            navigate('/dashboard');
+            // Force a hard redirect instead of using React Router navigation
+            // This ensures the app state is fully refreshed with the guest mode
+            window.location.href = '/dashboard';
         } catch (error) {
             console.error('Guest login error:', error);
             setError('Failed to continue as guest. Please try again.');
