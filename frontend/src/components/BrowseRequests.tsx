@@ -427,7 +427,7 @@ const BrowseRequests: React.FC = () => {
                                                         Please <button 
                                                             onClick={() => {
                                                                 sessionStorage.removeItem('GUEST_MODE');
-                                                                window.location.href = '/login';
+                                                                navigate('/login');
                                                             }} 
                                                             className="font-medium text-blue-600 hover:text-blue-800 underline"
                                                         >sign in</button> first to use this feature
