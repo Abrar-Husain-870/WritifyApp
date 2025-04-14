@@ -99,19 +99,31 @@ const Login: React.FC<LoginProps> = () => {
             localStorage.removeItem('user_logged_out');
             sessionStorage.removeItem('manual_logout');
             
+            // Clear guest mode flags
+            sessionStorage.removeItem('GUEST_MODE');
+            sessionStorage.removeItem('GUEST_USER');
+            
             // Also clear any other potential auth data
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             localStorage.removeItem('auth');
+            localStorage.removeItem('session');
             sessionStorage.removeItem('user');
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('auth');
+            sessionStorage.removeItem('session');
+            
+            // Super aggressive cookie clearing - try multiple times
+            clearAllCookies();
             
             // Add a small delay to ensure all clearing operations complete
             setTimeout(() => {
+                // Do one final cookie clear
+                clearAllCookies();
+                
                 // Redirect to Google OAuth with cache-busting parameter
-                window.location.href = `${API.auth.google}?t=${Date.now()}`;
-            }, 100);
+                window.location.href = `${API.auth.google}?t=${Date.now()}&force=true`;
+            }, 300);
         } catch (error) {
             console.error('Authentication error occurred');
             setError('Failed to connect to authentication service');

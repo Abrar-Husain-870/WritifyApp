@@ -420,11 +420,23 @@ app.get('/auth/google/callback', authCors, (req, res, next) => {
         // If there's an error or no user (authentication failed)
         if (err || !user) {
             const errorMessage = err?.message || info?.message || 'Authentication failed';
-            console.log('Authentication failed:', errorMessage);
+            console.error('Authentication failed:', errorMessage);
             
-            // Redirect to login page with error message
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            return res.redirect(`${frontendUrl}/login?error=unauthorized&message=${encodeURIComponent(errorMessage)}`);
+            // Clear any existing session completely before redirecting
+            req.session.destroy((destroyErr) => {
+                if (destroyErr) {
+                    console.error('Session destruction error:', destroyErr);
+                }
+                
+                // Set cache-control headers to prevent caching
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+                
+                // Redirect with unauthorized error parameter
+                return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=unauthorized&t=${Date.now()}`);
+            });
+            return;
         }
         
         // If authentication succeeded, log in the user
@@ -435,7 +447,8 @@ app.get('/auth/google/callback', authCors, (req, res, next) => {
             }
             
             console.log('Google OAuth callback successful');
-            return res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
+            // Add cache-busting parameter to prevent caching issues
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}?t=${Date.now()}`);
         });
     })(req, res, next);
 });
