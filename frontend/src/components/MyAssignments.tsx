@@ -9,7 +9,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  profile_picture: string;
+  profile_picture: string | null;
   rating: number;
   total_ratings: number;
   whatsapp_number?: string;
@@ -50,6 +50,117 @@ const MyAssignments: React.FC = () => {
     const fetchAssignments = async () => {
       try {
         setLoading(true);
+        
+        if (isGuest) {
+          // For guest users, generate sample anonymized data
+          setUserRole('guest');
+          
+          // Create sample assignments with anonymized data
+          const sampleAssignments: Assignment[] = [
+            {
+              id: 1001,
+              request_id: 2001,
+              writer: {
+                id: 3001,
+                name: 'Anonymous Writer',
+                email: 'writer@example.com',
+                profile_picture: null,
+                rating: 4.5,
+                total_ratings: 12,
+                whatsapp_number: '**********'
+              },
+              client: {
+                id: 4001,
+                name: 'Guest',
+                email: 'guest@example.com',
+                profile_picture: null,
+                rating: 4.2,
+                total_ratings: 8
+              },
+              status: 'in_progress',
+              created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+              completed_at: null,
+              course_name: 'Introduction to Computer Science',
+              course_code: 'CS101',
+              assignment_type: 'Essay',
+              num_pages: 5,
+              deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+              estimated_cost: 50,
+              has_rated_writer: false,
+              has_rated_client: false
+            },
+            {
+              id: 1002,
+              request_id: 2002,
+              writer: {
+                id: 3002,
+                name: 'Anonymous Writer',
+                email: 'writer2@example.com',
+                profile_picture: null,
+                rating: 4.8,
+                total_ratings: 24,
+                whatsapp_number: '**********'
+              },
+              client: {
+                id: 4002,
+                name: 'Guest',
+                email: 'guest@example.com',
+                profile_picture: null,
+                rating: 4.0,
+                total_ratings: 5
+              },
+              status: 'completed',
+              created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+              completed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+              course_name: 'Advanced Database Systems',
+              course_code: 'CS305',
+              assignment_type: 'Research Paper',
+              num_pages: 10,
+              deadline: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+              estimated_cost: 120,
+              has_rated_writer: true,
+              has_rated_client: true
+            },
+            {
+              id: 1003,
+              request_id: 2003,
+              writer: {
+                id: 3003,
+                name: 'Anonymous Writer',
+                email: 'writer3@example.com',
+                profile_picture: null,
+                rating: 4.6,
+                total_ratings: 15,
+                whatsapp_number: '**********'
+              },
+              client: {
+                id: 4003,
+                name: 'Guest',
+                email: 'guest@example.com',
+                profile_picture: null,
+                rating: 4.3,
+                total_ratings: 7
+              },
+              status: 'pending',
+              created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+              completed_at: null,
+              course_name: 'Marketing Principles',
+              course_code: 'MKT201',
+              assignment_type: 'Case Study',
+              num_pages: 7,
+              deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+              estimated_cost: 70,
+              has_rated_writer: false,
+              has_rated_client: false
+            }
+          ];
+          
+          setAssignments(sampleAssignments);
+          setLoading(false);
+          return;
+        }
+        
+        // For authenticated users, fetch real data
         const response = await fetch(API.assignments.my, {
           credentials: 'include',
           headers: {

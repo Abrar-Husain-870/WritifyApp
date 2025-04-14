@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
+import { GuestContext } from '../App';
 
 interface Rating {
   id: number;
@@ -24,10 +25,23 @@ const MyRatings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { isGuest } = useContext(GuestContext);
+
   useEffect(() => {
     const fetchRatings = async () => {
       try {
         setLoading(true);
+
+        if (isGuest) {
+          // For guest users, show empty ratings
+          setRatings([]);
+          setAverageRating(0);
+          setTotalRatings(0);
+          setLoading(false);
+          return;
+        }
+
+        // For registered users, fetch real ratings
         const response = await fetch(API.users.ratings, {
           credentials: 'include',
           headers: {
@@ -56,9 +70,9 @@ const MyRatings: React.FC = () => {
         
         const data = await response.json();
         console.log('Ratings data:', data);
-        setRatings(data.ratings);
-        setAverageRating(parseFloat(data.averageRating) || 0);
-        setTotalRatings(data.totalRatings);
+        setRatings(data.ratings || []);
+        setAverageRating(data.average_rating || 0);
+        setTotalRatings(data.total_ratings || 0);
       } catch (error) {
         console.error('Error fetching ratings:', error);
         setError('Failed to load ratings. Please try again later.');
@@ -68,7 +82,7 @@ const MyRatings: React.FC = () => {
     };
 
     fetchRatings();
-  }, [navigate]);
+  }, [navigate, isGuest]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

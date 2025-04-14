@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
+import { GuestContext } from '../App';
 
 interface Writer {
     id: number;
@@ -41,30 +42,64 @@ const FindWriter: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
+    const { isGuest } = useContext(GuestContext);
+
     useEffect(() => {
-        fetch(API.writers.all, {
-            credentials: 'include'
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error(`HTTP error! Status: ${res.status}`);
-            }
-            return res.json();
-        })
-        .then(data => {
-            // Filter out inactive writers
-            const activeWriters = data.filter((writer: Writer) => 
-                writer.writer_status === 'active' || writer.writer_status === 'busy'
-            );
-            setWriters(activeWriters);
+        if (isGuest) {
+            // For guest users, provide sample writers
+            const sampleWriters: Writer[] = [
+                {
+                    id: 1001,
+                    name: 'John Smith',
+                    rating: 4.8,
+                    total_ratings: 24,
+                    writer_status: 'active',
+                    university_stream: 'Computer Science',
+                    sample_work_image: 'https://via.placeholder.com/150'
+                },
+                {
+                    id: 1002,
+                    name: 'Alice Johnson',
+                    rating: 4.5,
+                    total_ratings: 18,
+                    writer_status: 'active',
+                    university_stream: 'Business Administration',
+                    sample_work_image: 'https://via.placeholder.com/150'
+                },
+                {
+                    id: 1003,
+                    name: 'Jacob Williams',
+                    rating: 4.7,
+                    total_ratings: 32,
+                    writer_status: 'busy',
+                    university_stream: 'Engineering',
+                    sample_work_image: 'https://via.placeholder.com/150'
+                }
+            ];
+            setWriters(sampleWriters);
             setLoading(false);
-        })
-        .catch(err => {
-            console.error('Error fetching writers:', err);
-            setLoading(false);
-            setError('Failed to load writers. Please try again later.');
-        });
-    }, []);
+        } else {
+            // For registered users, fetch real writers
+            fetch(API.writers.all, {
+                credentials: 'include'
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! Status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                setWriters(data.writers || []);
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error('Error fetching writers:', error);
+                setLoading(false);
+                setError('Failed to load writers. Please try again later.');
+            });
+        }
+    }, [isGuest]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -127,7 +162,15 @@ const FindWriter: React.FC = () => {
         e.preventDefault();
         setSubmitting(true);
         setError(null);
-        
+        setSuccess(null);
+
+        if (isGuest) {
+            // For guest users, show a message that they need to sign in
+            setError('Sign in first to use this feature');
+            setSubmitting(false);
+            return;
+        }
+
         // Validate form before submission
         if (!validateForm()) {
             setSubmitting(false);
@@ -148,40 +191,35 @@ const FindWriter: React.FC = () => {
             const response = await fetch(API.assignmentRequests.create, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 credentials: 'include',
                 body: JSON.stringify(sanitizedData)
             });
 
-            if (response.ok) {
-                setSuccess('Assignment request submitted successfully! It will be visible to all writers on the Browse Assignments page.');
-                
-                // Reset form
-                setFormData({
-                    course_name: '',
-                    course_code: '',
-                    assignment_type: 'class_assignment',
-                    num_pages: 1,
-                    deadline: '',
-                    estimated_cost: 50,
-                    whatsapp_number: ''
-                });
-                
-                // Redirect to dashboard after a delay
-                setTimeout(() => {
-                    navigate('/dashboard');
-                }, 2000);
-            } else {
-                const errorData = await response.json();
-                setError(errorData.error || 'Failed to submit request. Please try again.');
-                console.error('Error response:', errorData);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
+
+            const data = await response.json();
+            setSuccess('Your assignment request has been created successfully!');
+            setTimeout(() => {
+                navigate('/my-assignments');
+            }, 2000);
         } catch (error) {
-            console.error('Error submitting request:', error);
-            setError('Network error. Please check your connection and try again.');
+            console.error('Error creating assignment request:', error);
+            setError('Failed to create assignment request. Please try again.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleWriterClick = (writerId: number) => {
+        if (isGuest) {
+            // For guest users, show the form but will show a message when they try to submit
+            setShowShareForm(true);
+        } else {
+            navigate(`/writer-profile/${writerId}`);
         }
     };
 
@@ -367,13 +405,13 @@ const FindWriter: React.FC = () => {
                                 {writers.map(writer => (
                                     <div
                                         key={writer.id}
-                                        onClick={() => navigate(`/writer/${writer.id}`)}
+                                        onClick={() => handleWriterClick(writer.id)}
                                         className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-transform hover:scale-105"
                                     >
                                         {/* Sample Work Image */}
                                         <div className="h-48 w-full bg-gray-200">
                                             <img 
-                                                src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22160%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'} 
+                                                src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22160%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'}
                                                 alt={`${writer.name}'s sample work`}
                                                 className="w-full h-48 object-cover rounded-t-lg"
                                                 onError={(e) => {

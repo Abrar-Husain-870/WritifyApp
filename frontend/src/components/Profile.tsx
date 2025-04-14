@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header'; // Assuming the Header component is in the same directory
 import { API } from '../utils/api'; // Correct import path for the API utility
+import { GuestContext } from '../App';
 
 interface User {
     id: number;
@@ -32,8 +33,14 @@ const Profile: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    const { isGuest } = useContext(GuestContext);
+
     useEffect(() => {
-        // Fetch user profile
+        if (isGuest) {
+            setLoading(false);
+            return;
+        }
+
         fetch(API.users.profile, {
             method: 'GET',
             credentials: 'include',
@@ -44,16 +51,13 @@ const Profile: React.FC = () => {
         })
         .then(res => {
             if (!res.ok) {
-                // Log the error response for debugging
                 console.error(`Profile fetch failed with status: ${res.status}`);
                 return res.text().then(text => {
                     try {
-                        // Try to parse as JSON
                         const errorData = JSON.parse(text);
-                        throw new Error(errorData.error || `Failed to fetch profile: ${res.status}`);
+                        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
                     } catch (e) {
-                        // If parsing fails, use the raw text or status
-                        throw new Error(`Failed to fetch profile: ${text || res.status}`);
+                        throw new Error(`HTTP error! status: ${res.status}`);
                     }
                 });
             }
@@ -66,16 +70,18 @@ const Profile: React.FC = () => {
             }
             setLoading(false);
         })
-        .catch(err => {
-            console.error('Error fetching profile:', err);
-            setMessage({ type: 'error', text: err.message || 'Failed to load profile' });
+        .catch(error => {
+            console.error('Error fetching profile:', error);
+            setMessage({
+                type: 'error',
+                text: 'Failed to load profile. Please try again later.'
+            });
             setLoading(false);
         });
-    }, []);
+    }, [isGuest]);
 
     const handleWriterStatusUpdate = async (status: 'active' | 'busy' | 'inactive') => {
         try {
-            // Check if user is trying to set status to active or busy without a WhatsApp number
             if ((status === 'active' || status === 'busy') && (!user?.whatsapp_number || user.whatsapp_number.trim() === '')) {
                 setMessage({ 
                     type: 'error', 
@@ -130,21 +136,16 @@ const Profile: React.FC = () => {
     const handlePortfolioUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Convert Google Drive link if necessary
         let imageUrl = portfolio.sample_work_image;
         if (imageUrl) {
-            // Handle Google Drive links
             if (imageUrl.includes('drive.google.com/file/d/')) {
-                // Extract file ID from Google Drive link
                 const fileIdMatch = imageUrl.match(/\/d\/([^/]+)/);
                 if (fileIdMatch && fileIdMatch[1]) {
                     const fileId = fileIdMatch[1];
                     imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
                     console.log('Converted Google Drive URL:', imageUrl);
                 }
-            }
-            // Handle Google Drive sharing links
-            else if (imageUrl.includes('drive.google.com/open?id=')) {
+            } else if (imageUrl.includes('drive.google.com/open?id=')) {
                 const idParam = new URL(imageUrl).searchParams.get('id');
                 if (idParam) {
                     imageUrl = `https://drive.google.com/uc?export=view&id=${idParam}`;
@@ -169,8 +170,6 @@ const Profile: React.FC = () => {
 
             if (response.ok) {
                 setMessage({ type: 'success', text: 'Portfolio updated successfully!' });
-                
-                // Update the portfolio state only once with the final URL
                 setPortfolio(prevState => ({
                     ...prevState,
                     sample_work_image: imageUrl
@@ -212,7 +211,6 @@ const Profile: React.FC = () => {
                 return;
             }
 
-            // Account deleted successfully, redirect to account deleted page
             navigate('/account-deleted');
         } catch (error) {
             console.error('Error deleting account:', error);
@@ -222,8 +220,33 @@ const Profile: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading profile...</p>
+            </div>
+        );
+    }
+
+    if (isGuest) {
+        return (
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg p-8">
+                <div className="text-center py-12">
+                    <div className="mx-auto w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 className="mt-6 text-2xl font-bold text-gray-900">Guest Mode</h2>
+                    <p className="mt-2 text-gray-600 max-w-md mx-auto">
+                        You are currently browsing as a guest. To access your profile and use all features, please sign in with your university email address.
+                    </p>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        Sign In
+                    </button>
+                </div>
             </div>
         );
     }
@@ -234,21 +257,16 @@ const Profile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
             <Header title="Profile" />
 
-            {/* Main content */}
             <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                 {message && (
-                    <div className={`mb-6 p-4 rounded-md ${
-                        message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
+                    <div className={`p-4 ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {message.text}
                     </div>
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                    {/* Profile Section */}
                     <div className="space-y-8">
                         <div className="bg-white rounded-lg shadow-lg p-6">
                             <div className="flex items-center space-x-4 mb-6">

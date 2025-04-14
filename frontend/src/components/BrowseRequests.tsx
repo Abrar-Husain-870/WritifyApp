@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
+import { GuestContext } from '../App';
 
 interface Client {
     id: number;
@@ -34,52 +35,111 @@ const BrowseRequests: React.FC = () => {
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<number | null>(null);
 
-    useEffect(() => {
-        // Fetch the current user's profile to get their ID
-        fetch(API.users.profile, {
-            credentials: 'include'
-        })
-        .then(res => {
-            if (res.ok) {
-                return res.json();
-            }
-            throw new Error('Failed to fetch user profile');
-        })
-        .then(data => {
-            setCurrentUserId(data.id);
-        })
-        .catch(err => {
-            console.error('Error fetching user profile:', err);
-        });
+    const { isGuest } = useContext(GuestContext);
 
-        // Fetch assignment requests
-        fetch(API.assignmentRequests.all, {
-            credentials: 'include'
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error(`HTTP error! Status: ${res.status}`);
-            }
-            return res.json();
-        })
-        .then(data => {
-            // Ensure data is an array before setting it
-            if (Array.isArray(data)) {
-                setRequests(data);
-            } else {
-                console.error('Expected array but got:', data);
-                setRequests([]);
-                setError('Received invalid data format from server');
-            }
+    useEffect(() => {
+        if (isGuest) {
+            // For guest users, provide sample assignment requests
+            const sampleRequests: AssignmentRequest[] = [
+                {
+                    id: 2001,
+                    client: {
+                        id: 3001,
+                        name: 'Sample Client 1',
+                        rating: 4.2,
+                        total_ratings: 5
+                    },
+                    course_name: 'Introduction to Computer Science',
+                    course_code: 'CS101',
+                    assignment_type: 'Essay',
+                    num_pages: 5,
+                    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    expiration_deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+                    estimated_cost: 50,
+                    status: 'open',
+                    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+                },
+                {
+                    id: 2002,
+                    client: {
+                        id: 3002,
+                        name: 'Sample Client 2',
+                        rating: 4.5,
+                        total_ratings: 12
+                    },
+                    course_name: 'Business Ethics',
+                    course_code: 'BUS205',
+                    assignment_type: 'Research Paper',
+                    num_pages: 8,
+                    deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+                    expiration_deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    estimated_cost: 80,
+                    status: 'open',
+                    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+                },
+                {
+                    id: 2003,
+                    client: {
+                        id: 3003,
+                        name: 'Sample Client 3',
+                        rating: 4.8,
+                        total_ratings: 8
+                    },
+                    course_name: 'Advanced Database Systems',
+                    course_code: 'CS305',
+                    assignment_type: 'Programming Assignment',
+                    num_pages: 3,
+                    deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+                    expiration_deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+                    estimated_cost: 100,
+                    status: 'open',
+                    created_at: new Date().toISOString()
+                }
+            ];
+            setRequests(sampleRequests);
+            setCurrentUserId(1000); // Dummy ID for guest
             setLoading(false);
-        })
-        .catch(err => {
-            console.error('Error fetching requests:', err);
-            setRequests([]);
-            setError(`Failed to load requests: ${err.message}`);
-            setLoading(false);
-        });
-    }, []);
+        } else {
+            // For registered users, fetch real data
+            // Fetch the current user's profile to get their ID
+            fetch(API.users.profile, {
+                credentials: 'include'
+            })
+            .then(res => {
+                if (res.ok) {
+                    return res.json();
+                }
+                throw new Error('Failed to fetch user profile');
+            })
+            .then(data => {
+                setCurrentUserId(data.id);
+            })
+            .catch(err => {
+                console.error('Error fetching user profile:', err);
+            })
+            .finally(() => {
+                // Fetch assignment requests
+                fetch(API.assignmentRequests.all, {
+                    credentials: 'include'
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! Status: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    setRequests(data.requests || []);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    console.error('Error fetching requests:', err);
+                    setLoading(false);
+                    setError('Failed to load assignment requests. Please try again later.');
+                });
+            });
+        }
+    }, [isGuest]);
 
     const getAssignmentTypeIcon = (type: string) => {
         switch (type) {
@@ -117,8 +177,17 @@ const BrowseRequests: React.FC = () => {
     };
 
     const handleAcceptRequest = async (requestId: number) => {
+        setAcceptingId(requestId);
+        setError(null);
+
+        if (isGuest) {
+            // For guest users, show a message that they need to sign in
+            setError('Sign in first to use this feature');
+            setAcceptingId(null);
+            return;
+        }
+
         try {
-            setAcceptingId(requestId);
             const response = await fetch(API.assignmentRequests.accept(requestId), {
                 method: 'POST',
                 credentials: 'include',
@@ -127,29 +196,20 @@ const BrowseRequests: React.FC = () => {
                 }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Check if client's WhatsApp number is valid
-                const clientWhatsapp = data.client_whatsapp || '';
-                
-                // Clean up the WhatsApp number
-                const cleanWhatsapp = clientWhatsapp.replace(/\D/g, '');
-                
-                // Check if WhatsApp number is empty or just contains the country code
-                if (!cleanWhatsapp || cleanWhatsapp === '91' || cleanWhatsapp === '') {
-                    alert('Assignment accepted! The client has not added their WhatsApp number. Please check your assignments page.');
-                    navigate('/my-assignments');
-                    return;
-                }
-                
-                // Open WhatsApp with the client's number
-                const message = encodeURIComponent(`Hi, I've accepted your assignment request for ${data.course_name}. Let's discuss the details.`);
-                window.open(`https://wa.me/${clientWhatsapp}?text=${message}`, '_blank');
-                navigate('/dashboard');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
+
+            const data = await response.json();
+            
+            // Remove the accepted request from the list
+            setRequests(requests.filter(req => req.id !== requestId));
+            
+            // Navigate to the assignments page
+            navigate('/my-assignments');
         } catch (error) {
             console.error('Error accepting request:', error);
+            setError('Failed to accept assignment request. Please try again.');
         } finally {
             setAcceptingId(null);
         }
