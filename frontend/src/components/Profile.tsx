@@ -220,8 +220,8 @@ const Profile: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 <p className="mt-4 text-gray-600">Loading profile...</p>
             </div>
         );
@@ -229,15 +229,15 @@ const Profile: React.FC = () => {
 
     if (isGuest) {
         return (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg p-8">
+            <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg p-8">
                 <div className="text-center py-12">
                     <div className="mx-auto w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h2 className="mt-6 text-2xl font-bold text-gray-900">Guest Mode</h2>
-                    <p className="mt-2 text-gray-600 max-w-md mx-auto">
+                    <h2 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">Guest Mode</h2>
+                    <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-md mx-auto">
                         You are currently browsing as a guest. To access your profile and use all features, please sign in with your university email address.
                     </p>
                     <button
@@ -256,10 +256,10 @@ const Profile: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Header title="Profile" />
-
-            <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <Header title="My Profile" />
+            
+            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 {message && (
                     <div className={`p-4 ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {message.text}
@@ -268,7 +268,7 @@ const Profile: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     <div className="space-y-8">
-                        <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
                             <div className="flex items-center space-x-4 mb-6">
                                 <img
                                     src={user.profile_picture}
@@ -276,14 +276,14 @@ const Profile: React.FC = () => {
                                     className="h-16 w-16 rounded-full"
                                 />
                                 <div>
-                                    <h2 className="text-xl font-semibold text-gray-900">{user.name}</h2>
-                                    <p className="text-gray-600">{user.email}</p>
+                                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{user.name}</h2>
+                                    <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{user?.email}</dd>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">University Stream</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">University Stream</label>
                                     <input
                                         type="text"
                                         value={user.university_stream || ''}
@@ -293,7 +293,7 @@ const Profile: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">WhatsApp Number</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">WhatsApp Number</label>
                                     <input
                                         type="tel"
                                         value={user.whatsapp_number || ''}
@@ -309,7 +309,7 @@ const Profile: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Writer Status</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Writer Status</label>
                                     <div className="flex space-x-4">
                                         <button
                                             onClick={() => handleWriterStatusUpdate('active')}
@@ -353,25 +353,25 @@ const Profile: React.FC = () => {
                         </div>
 
                         {user.rating > 0 && (
-                            <div className="bg-white rounded-lg shadow-lg p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Ratings & Reviews</h3>
+                            <div className="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ratings & Reviews</h3>
                                 <div className="flex items-center space-x-2">
                                     <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                     </svg>
-                                    <span className="text-xl font-semibold text-gray-900">{typeof user.rating === 'number' ? user.rating.toFixed(1) : '0.0'}</span>
-                                    <span className="text-gray-500">({user.total_ratings || 0} reviews)</span>
+                                    <span className="text-xl font-semibold text-gray-900 dark:text-white">{typeof user.rating === 'number' ? user.rating.toFixed(1) : '0.0'}</span>
+                                    <span className="text-gray-500 dark:text-gray-400">({user.total_ratings || 0} reviews)</span>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* Portfolio Section */}
-                    <div className="bg-white rounded-lg shadow-lg p-6">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Writer Portfolio</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Writer Portfolio</h3>
                         <form onSubmit={handlePortfolioUpdate} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Sample Work Image URL</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">Sample Work Image URL</label>
                                 <input
                                     type="url"
                                     value={portfolio.sample_work_image}
@@ -379,22 +379,22 @@ const Profile: React.FC = () => {
                                     placeholder="https://example.com/image.jpg"
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
-                                <p className="mt-1 text-sm text-gray-500">
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                     For best results, use direct image URLs from ImageKit's free image hosting tool or other image hosting services.
                                 </p>
-                                <div className="mt-2 p-3 bg-blue-50 rounded text-sm">
-                                    <p className="font-medium text-blue-700">How to use ImageKit's free image hosting:</p>
-                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 space-y-1">
-                                        <li>Go to <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">ImageKit Free Image Hosting</a></li>
-                                        <li>Click "Upload Image" and select your file (no account required)</li>
-                                        <li>Once uploaded, click "Copy URL" to get the direct image link</li>
-                                        <li>Paste the copied URL here</li>
+                                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm">
+                                    <p className="font-medium text-blue-700 dark:text-blue-200">How to use ImageKit's free image hosting:</p>
+                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
+                                        <li>Go to <a href="https://imagekit.io/" target="_blank" rel="noopener noreferrer" className="underline">ImageKit.io</a> and sign up for a free account</li>
+                                        <li>Upload your image to your ImageKit media library</li>
+                                        <li>Copy the URL of the uploaded image</li>
+                                        <li>Paste it here</li>
                                     </ol>
-                                    <p className="mt-2 text-blue-700">Note: Images are hosted for free and no signup is required.</p>
+                                    <p className="mt-2 text-blue-700 dark:text-blue-200">Note: Images are hosted for free and no signup is required.</p>
                                 </div>
                                 {portfolio.sample_work_image && (
                                     <div className="mt-4 border p-3 rounded-md">
-                                        <p className="text-sm font-medium text-gray-700 mb-2">Image Preview:</p>
+                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image Preview:</p>
                                         <img 
                                             src={portfolio.sample_work_image} 
                                             alt="Preview" 
@@ -411,7 +411,7 @@ const Profile: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Description</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">Description</label>
                                 <textarea
                                     value={portfolio.description}
                                     onChange={(e) => setPortfolio(prev => ({ ...prev, description: e.target.value }))}
@@ -434,27 +434,27 @@ const Profile: React.FC = () => {
             
             {/* Account Settings Section */}
             <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-12">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Account Settings</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-12">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Account Settings</h3>
                     
                     <div className="space-y-6">
-                        <div className="p-4 bg-blue-50 rounded-md">
-                            <p className="text-blue-700">
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                            <p className="text-blue-700 dark:text-blue-200">
                                 <span className="font-medium">Tip:</span> Getting unwanted assignment requests? Try switching your writing status to "Inactive".
                             </p>
                         </div>
                         
-                        <div className="border-t pt-6">
-                            <h4 className="text-lg font-medium text-gray-900 mb-2">Danger Zone</h4>
-                            <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Danger Zone</h4>
+                            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md border border-gray-200 dark:border-gray-700">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-start space-x-3">
                                         <svg className="h-6 w-6 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                         </svg>
                                         <div>
-                                            <h5 className="text-md font-medium text-gray-900">Delete Account</h5>
-                                            <p className="text-sm text-gray-500">
+                                            <h5 className="text-md font-medium text-gray-900 dark:text-white">Delete Account</h5>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">
                                                 Permanently delete your account and all associated data. This action cannot be undone.
                                             </p>
                                         </div>
@@ -473,25 +473,25 @@ const Profile: React.FC = () => {
             </div>
             
             {showDeleteConfirmation && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center">
-                    <div className="bg-white rounded-lg shadow-lg p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Account Deletion</h3>
-                        <p className="text-gray-600 mb-6">Are you sure you want to delete your account? This action is irreversible.</p>
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Account Deletion</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete your account? This action is irreversible.</p>
                         {deleteError && (
-                            <div className="mb-6 p-4 rounded-md bg-red-100 text-red-700">
+                            <div className="mb-6 p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200">
                                 {deleteError}
                             </div>
                         )}
                         <div className="flex space-x-4">
                             <button
                                 onClick={() => setShowDeleteConfirmation(false)}
-                                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleDeleteAccount}
-                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                             >
                                 Delete Account
                             </button>

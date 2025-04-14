@@ -243,7 +243,7 @@ const FindWriter: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Header */}
             <Header title="Find a Writer" />
 
@@ -256,12 +256,12 @@ const FindWriter: React.FC = () => {
                 ) : (
                     <>
                         {showShareForm ? (
-                            <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-semibold text-gray-900">Share Assignment Details with All Writers</h3>
+                                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Share Assignment Details with All Writers</h3>
                                     <button 
                                         onClick={() => setShowShareForm(false)}
-                                        className="text-gray-500 hover:text-gray-700"
+                                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -271,37 +271,37 @@ const FindWriter: React.FC = () => {
                                 
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Course Name</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course Name</label>
                                         <input
                                             type="text"
                                             name="course_name"
                                             value={formData.course_name}
                                             onChange={handleChange}
                                             required
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Course Code</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course Code</label>
                                         <input
                                             type="text"
                                             name="course_code"
                                             value={formData.course_code}
                                             onChange={handleChange}
                                             required
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Assignment Type</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assignment Type</label>
                                         <select
                                             name="assignment_type"
                                             value={formData.assignment_type}
                                             onChange={handleChange}
                                             required
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="class_assignment">Class Assignment</option>
                                             <option value="lab_files">Lab Files</option>
@@ -311,7 +311,7 @@ const FindWriter: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Number of Pages</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Number of Pages</label>
                                         <input
                                             type="number"
                                             name="num_pages"
@@ -319,27 +319,27 @@ const FindWriter: React.FC = () => {
                                             onChange={handleChange}
                                             required
                                             min="1"
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Deadline</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Deadline</label>
                                         <input
                                             type="datetime-local"
                                             name="deadline"
                                             value={formData.deadline}
                                             onChange={handleChange}
                                             required
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Estimated Cost (₹)</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Cost (₹)</label>
                                         <div className="mt-1">
                                             <div className="flex items-center space-x-2">
-                                                <span className="text-gray-700 font-medium">₹50</span>
+                                                <span className="text-gray-700 dark:text-gray-300 font-medium">₹50</span>
                                                 <input
                                                     type="range"
                                                     name="estimated_cost"
@@ -359,7 +359,7 @@ const FindWriter: React.FC = () => {
                                                 <span className="text-gray-700 font-medium">₹2500</span>
                                             </div>
                                             <div className="mt-2 text-center">
-                                                <span className="text-lg font-semibold text-blue-600">₹{formData.estimated_cost}</span>
+                                                <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">₹{formData.estimated_cost}</span>
                                             </div>
                                         </div>
                                         <p className="mt-1 text-sm text-gray-500">
@@ -368,7 +368,7 @@ const FindWriter: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Your WhatsApp Number</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your WhatsApp Number</label>
                                         <input
                                             type="tel"
                                             name="whatsapp_number"
@@ -376,7 +376,7 @@ const FindWriter: React.FC = () => {
                                             onChange={handleChange}
                                             required
                                             placeholder="+91XXXXXXXXXX"
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                         />
                                     </div>
 
@@ -401,7 +401,7 @@ const FindWriter: React.FC = () => {
                                 {/* Share with All Writers Card */}
                                 <div
                                     onClick={() => setShowShareForm(true)}
-                                    className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-transform hover:scale-105 border-2 border-blue-500"
+                                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 transform hover:scale-105 border-2 border-blue-500"
                                 >
                                     <div className="h-48 w-full bg-blue-100 flex items-center justify-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -409,8 +409,8 @@ const FindWriter: React.FC = () => {
                                         </svg>
                                     </div>
                                     <div className="p-6">
-                                        <h3 className="text-xl font-semibold text-gray-900 mb-4">Share details with every writer</h3>
-                                        <p className="text-gray-600 mb-4">Submit your assignment request to all available writers at once</p>
+                                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Share details with every writer</h3>
+                                        <p className="text-gray-600 dark:text-gray-400 mb-4">Submit your assignment request to all available writers at once</p>
                                         <div className="flex items-center text-blue-600">
                                             <span className="font-medium">Click to share details</span>
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
@@ -425,7 +425,7 @@ const FindWriter: React.FC = () => {
                                     <div
                                         key={writer.id}
                                         onClick={() => handleWriterClick(writer.id)}
-                                        className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-transform hover:scale-105"
+                                        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 transform hover:scale-105"
                                     >
                                         {/* Sample Work Image */}
                                         <div className="h-48 w-full bg-gray-200">
@@ -445,7 +445,7 @@ const FindWriter: React.FC = () => {
                                         {/* Writer Info */}
                                         <div className="p-6">
                                             <div className="flex justify-between items-start mb-4">
-                                                <h3 className="text-xl font-semibold text-gray-900">{writer.name}</h3>
+                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{writer.name}</h3>
                                                 <div className="flex items-center">
                                                     <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
                                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -458,7 +458,7 @@ const FindWriter: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <p className="text-gray-600 mb-4">{writer.university_stream}</p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">{writer.university_stream}</p>
 
                                             {/* Status Indicator */}
                                             <div className="flex items-center">
