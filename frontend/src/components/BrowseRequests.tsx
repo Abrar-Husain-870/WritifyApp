@@ -34,6 +34,7 @@ const BrowseRequests: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<number | null>(null);
+    const [guestActionAttempt, setGuestActionAttempt] = useState<number | null>(null);
 
     const { isGuest } = useContext(GuestContext);
 
@@ -119,17 +120,36 @@ const BrowseRequests: React.FC = () => {
             })
             .finally(() => {
                 // Fetch assignment requests
+                console.log('Fetching assignment requests from:', API.assignmentRequests.all);
                 fetch(API.assignmentRequests.all, {
-                    credentials: 'include'
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 })
                 .then(res => {
                     if (!res.ok) {
-                        throw new Error(`HTTP error! Status: ${res.status}`);
+                        console.error(`Assignment requests fetch failed with status: ${res.status}`);
+                        return res.text().then(text => {
+                            console.error('Error response text:', text);
+                            throw new Error(`HTTP error! Status: ${res.status}`);
+                        });
                     }
                     return res.json();
                 })
                 .then(data => {
-                    setRequests(data.requests || []);
+                    console.log('Assignment requests data received:', data);
+                    if (data && Array.isArray(data.requests)) {
+                        setRequests(data.requests);
+                    } else if (data && Array.isArray(data)) {
+                        // Handle case where API returns array directly
+                        setRequests(data);
+                    } else {
+                        console.warn('Unexpected assignment requests data format:', data);
+                        setRequests([]);
+                    }
                     setLoading(false);
                 })
                 .catch(err => {
@@ -181,8 +201,8 @@ const BrowseRequests: React.FC = () => {
         setError(null);
 
         if (isGuest) {
-            // For guest users, show a message that they need to sign in
-            setError('Sign in first to use this feature');
+            // For guest users, show an inline message that they need to sign in
+            setGuestActionAttempt(requestId);
             setAcceptingId(null);
             return;
         }
@@ -361,7 +381,14 @@ const BrowseRequests: React.FC = () => {
                                             </div>
                                         </div>
                                         
-                                        <div className="mt-6">
+                                        <div className="mt-6 space-y-2">
+                                            {guestActionAttempt === request.id && isGuest && (
+                                                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                                                    <p className="text-sm text-yellow-700 text-center">
+                                                        Please <a href="/login" className="font-medium text-blue-600 hover:text-blue-800">sign in</a> first to use this feature
+                                                    </p>
+                                                </div>
+                                            )}
                                             {isClientRequest(request) && request.status === 'open' ? (
                                                 <button
                                                     onClick={() => setShowDeleteConfirmation(request.id)}

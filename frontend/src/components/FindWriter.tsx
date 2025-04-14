@@ -80,17 +80,36 @@ const FindWriter: React.FC = () => {
             setLoading(false);
         } else {
             // For registered users, fetch real writers
+            console.log('Fetching writers from:', API.writers.all);
             fetch(API.writers.all, {
-                credentials: 'include'
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             })
             .then(res => {
                 if (!res.ok) {
-                    throw new Error(`HTTP error! Status: ${res.status}`);
+                    console.error(`Writers fetch failed with status: ${res.status}`);
+                    return res.text().then(text => {
+                        console.error('Error response text:', text);
+                        throw new Error(`HTTP error! Status: ${res.status}`);
+                    });
                 }
                 return res.json();
             })
             .then(data => {
-                setWriters(data.writers || []);
+                console.log('Writers data received:', data);
+                if (data && Array.isArray(data.writers)) {
+                    setWriters(data.writers);
+                } else if (data && Array.isArray(data)) {
+                    // Handle case where API returns array directly
+                    setWriters(data);
+                } else {
+                    console.warn('Unexpected writers data format:', data);
+                    setWriters([]);
+                }
                 setLoading(false);
             })
             .catch(error => {
