@@ -202,19 +202,15 @@ if (process.env.NODE_ENV === 'production') {
 }
 */
 
-// Define allowed origins based on environment
-const allowedOrigins = process.env.FRONTEND_URL 
-    ? [process.env.FRONTEND_URL, 'https://writify-app-huxg.vercel.app', 'https://writify-nrgkhzjtb-abrar-husains-projects.vercel.app', 'http://localhost:3000']
-    : ['https://writify-app-huxg.vercel.app', 'https://writify-nrgkhzjtb-abrar-husains-projects.vercel.app', 'http://localhost:3000'];
-
 // Middleware setup
 app.use(cors({
     origin: function(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        // Allow all Vercel domains and localhost
+        if (!origin || origin.includes('vercel.app') || origin.includes('localhost')) {
             callback(null, true);
         } else {
-            console.log('Blocked origin:', origin);
-            callback(new Error('Not allowed by CORS'));
+            console.warn(`Origin ${origin} not allowed by CORS`);
+            callback(null, false);
         }
     },
     credentials: true,
@@ -222,6 +218,43 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
 }));
+
+// Handle manifest.json requests
+app.get('/manifest.json', (req, res) => {
+    // Apply CORS for this route specifically
+    const origin = req.headers.origin;
+    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    
+    res.status(200).json({
+        "name": "Writify",
+        "short_name": "Writify",
+        "icons": [
+            {
+                "src": "/favicon.ico",
+                "sizes": "64x64 32x32 24x24 16x16",
+                "type": "image/x-icon"
+            }
+        ],
+        "start_url": ".",
+        "display": "standalone",
+        "theme_color": "#000000",
+        "background_color": "#ffffff"
+    });
+});
+
+// Handle favicon.ico requests
+app.get('/favicon.ico', (req, res) => {
+    // Apply CORS for this route specifically
+    const origin = req.headers.origin;
+    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    
+    // Return a simple transparent 1x1 pixel ico
+    res.status(200).end();
+});
 
 app.use(express.json());
 
@@ -335,22 +368,16 @@ passport.use(new GoogleStrategy({
 
 // Define CORS middleware for auth routes
 const authCors = (req, res, next) => {
-    const allowedOrigins = [
-        'http://localhost:3000',
-        'https://writifyapp.vercel.app',
-        process.env.FRONTEND_URL,
-        'https://writify-edvyr5chz-abrar-husains-projects.vercel.app',
-        'https://writify-n68fecu7g-abrar-husains-projects.vercel.app'
-    ].filter(Boolean);
-
     const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
+    console.log('Request origin:', origin);
     
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Allow all Vercel domains and localhost
+    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+    }
     
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
@@ -392,12 +419,19 @@ app.use((err, req, res, next) => {
     next();
 });
 
-// Auth status endpoint with detailed logging
-app.get('/auth/status', authCors, (req, res) => {
+// Auth status endpoint with detailed logging - no auth required
+app.get('/auth/status', (req, res) => {
+    // Apply CORS for this route specifically
+    const origin = req.headers.origin;
+    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
     try {
         console.log('Auth status check - Origin:', req.headers.origin);
-        console.log('Auth status check - Session:', req.session);
-        console.log('Auth status check - User:', req.user);
+        console.log('Auth status check - Session ID:', req.session?.id);
+        console.log('Auth status check - Is Authenticated:', req.isAuthenticated?.());
         
         if (!req.session) {
             return res.status(200).json({
@@ -406,7 +440,7 @@ app.get('/auth/status', authCors, (req, res) => {
             });
         }
 
-        if (req.isAuthenticated()) {
+        if (req.isAuthenticated?.()) {
             return res.status(200).json({ 
                 isAuthenticated: true, 
                 user: req.user,
