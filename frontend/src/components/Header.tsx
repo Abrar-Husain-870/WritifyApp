@@ -11,19 +11,13 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
-    const { isGuest, setIsGuest } = useContext(GuestContext);
+    const { isGuest, setIsGuest, exitGuestMode } = useContext(GuestContext);
 
     const handleSignOut = () => {
         // Check if this is a guest session
         if (isGuest) {
-            // For guest users, clear the guest flag and redirect to login using navigate
-            setIsGuest(false);
-            sessionStorage.removeItem('GUEST_MODE');
-            // Clear localStorage and sessionStorage
-            localStorage.clear();
-            sessionStorage.clear();
-            // Force navigation to login page with cache-busting parameter
-            window.location.href = `/login?t=${Date.now()}&force=true`;
+            // For guest users, call exitGuestMode function from GuestContext
+            exitGuestMode();
             return;
         }
         

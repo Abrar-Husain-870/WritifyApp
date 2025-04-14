@@ -19,11 +19,13 @@ import { API } from './utils/api';
 interface GuestContextType {
   isGuest: boolean;
   setIsGuest: React.Dispatch<React.SetStateAction<boolean>>;
+  exitGuestMode: () => void;
 }
 
 export const GuestContext = createContext<GuestContextType>({
   isGuest: false,
-  setIsGuest: () => {}
+  setIsGuest: () => {},
+  exitGuestMode: () => {}
 });
 
 // Helper function to clear all cookies
@@ -193,7 +195,17 @@ function App() {
   // Render the appropriate content based on authentication status
   return (
     <ThemeProvider>
-      <GuestContext.Provider value={{ isGuest, setIsGuest }}>
+      <GuestContext.Provider value={{
+        isGuest,
+        setIsGuest,
+        exitGuestMode: () => {
+          setIsGuest(false);
+          sessionStorage.removeItem('GUEST_MODE');
+          sessionStorage.removeItem('GUEST_USER');
+          clearAllCookies();
+          window.location.href = '/login';
+        }
+      }}>
         <Router>
           <Routes>
             <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />

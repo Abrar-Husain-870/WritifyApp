@@ -14,7 +14,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const { isGuest } = useContext(GuestContext);
+    const { isGuest, exitGuestMode } = useContext(GuestContext);
 
     useEffect(() => {
         if (isGuest) {
@@ -69,10 +69,7 @@ const Dashboard: React.FC = () => {
                             </div>
                             <div className="mt-3">
                                 <button
-                                    onClick={() => {
-                                        sessionStorage.clear();
-                                        window.location.href = '/login';
-                                    }}
+                                    onClick={exitGuestMode}
                                     className="text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:text-yellow-600 dark:hover:text-yellow-100 transition-colors"
                                 >
                                     Sign in with your university email for full access →

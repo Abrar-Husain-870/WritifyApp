@@ -37,7 +37,7 @@ const BrowseRequests: React.FC = () => {
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<number | null>(null);
     const [guestActionAttempt, setGuestActionAttempt] = useState<number | null>(null);
 
-    const { isGuest } = useContext(GuestContext);
+    const { isGuest, exitGuestMode } = useContext(GuestContext);
 
     useEffect(() => {
         if (isGuest) {
@@ -425,10 +425,7 @@ const BrowseRequests: React.FC = () => {
                                                 <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-md">
                                                     <p className="text-sm text-yellow-700 dark:text-yellow-200 text-center">
                                                         Please <button 
-                                                            onClick={() => {
-                                                                sessionStorage.clear();
-                                                                window.location.href = '/login';
-                                                            }} 
+                                                            onClick={() => exitGuestMode()} 
                                                             className="font-medium text-blue-600 hover:text-blue-800 underline"
                                                         >sign in</button> first to use this feature
                                                     </p>
