@@ -1104,16 +1104,6 @@ app.get('/api/my-ratings', isAuthenticated, async (req, res) => {
         
         console.log(`Fetching ratings for user ${userId}`);
         
-        // Get the user's current average rating
-        const userResult = await pool.query(`
-            SELECT rating, total_ratings FROM users WHERE id = $1
-        `, [userId]);
-        
-        const averageRating = parseFloat(userResult.rows[0]?.rating) || 0;
-        const totalRatings = parseInt(userResult.rows[0]?.total_ratings) || 0;
-        
-        console.log(`User ${userId} has average rating ${averageRating} from ${totalRatings} ratings`);
-        
         // Fetch individual ratings received by this user
         const ratingsResult = await pool.query(`
             SELECT 
@@ -1141,11 +1131,39 @@ app.get('/api/my-ratings', isAuthenticated, async (req, res) => {
         
         console.log(`Found ${ratingsResult.rows.length} individual ratings for user ${userId}`);
         
-        // Return the user's ratings along with average rating
+        // Calculate the average rating directly from the ratings data
+        // This ensures we're using the most accurate and up-to-date information
+        let calculatedAverageRating = 0;
+        const ratings = ratingsResult.rows;
+        
+        if (ratings.length > 0) {
+            const sum = ratings.reduce((total, current) => total + parseFloat(current.rating), 0);
+            calculatedAverageRating = sum / ratings.length;
+            
+            // If the calculated average differs from the stored average, update the user record
+            const userResult = await pool.query(`
+                SELECT rating, total_ratings FROM users WHERE id = $1
+            `, [userId]);
+            
+            const averageRating = parseFloat(userResult.rows[0]?.rating) || 0;
+            const totalRatings = parseInt(userResult.rows[0]?.total_ratings) || 0;
+            
+            if (Math.abs(calculatedAverageRating - averageRating) > 0.01 || ratings.length !== totalRatings) {
+                console.log(`Updating user's rating from ${averageRating} to ${calculatedAverageRating} based on ${ratings.length} ratings`);
+                
+                await pool.query(`
+                    UPDATE users
+                    SET rating = $1, total_ratings = $2
+                    WHERE id = $3
+                `, [calculatedAverageRating.toFixed(2), ratings.length, userId]);
+            }
+        }
+        
+        // Return the user's ratings along with the calculated average rating
         res.json({
-            ratings: ratingsResult.rows,
-            averageRating,
-            totalRatings
+            ratings: ratings,
+            averageRating: calculatedAverageRating,
+            totalRatings: ratings.length
         });
     } catch (error) {
         console.error('Error fetching ratings:', error);
@@ -1378,6 +1396,13 @@ app.post('/api/ratings', isAuthenticated, async (req, res) => {
             FROM rating_stats rs
             WHERE users.id = rs.rated_id
         `, [rated_id]);
+        
+        // Double-check that the rating was properly updated
+        const updatedUserRating = await pool.query(`
+            SELECT rating, total_ratings FROM users WHERE id = $1
+        `, [rated_id]);
+        
+        console.log(`Updated user ${rated_id} rating to ${updatedUserRating.rows[0]?.rating} from ${updatedUserRating.rows[0]?.total_ratings} ratings`);
         
         // Update assignment status to completed
         const updateAssignmentResult = await pool.query(`
