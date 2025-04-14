@@ -335,15 +335,22 @@ passport.use(new GoogleStrategy({
 
 // Define CORS middleware for auth routes
 const authCors = (req, res, next) => {
+    const allowedOrigins = [
+        'http://localhost:3000',
+        'https://writifyapp.vercel.app',
+        process.env.FRONTEND_URL,
+        'https://writify-edvyr5chz-abrar-husains-projects.vercel.app',
+        'https://writify-n68fecu7g-abrar-husains-projects.vercel.app'
+    ].filter(Boolean);
+
     const origin = req.headers.origin;
-    
     if (allowedOrigins.includes(origin)) {
-        res.header('Access-Control-Allow-Origin', origin);
-        res.header('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Origin', origin);
     }
     
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
@@ -387,27 +394,35 @@ app.use((err, req, res, next) => {
 
 // Auth status endpoint with detailed logging
 app.get('/auth/status', authCors, (req, res) => {
-    if (!req.session) {
-        return res.status(200).json({
-            isAuthenticated: false,
-            message: 'No session found'
-        });
-    }
+    try {
+        console.log('Auth status check - Origin:', req.headers.origin);
+        console.log('Auth status check - Session:', req.session);
+        console.log('Auth status check - User:', req.user);
+        
+        if (!req.session) {
+            return res.status(200).json({
+                isAuthenticated: false,
+                message: 'No session found'
+            });
+        }
 
-    console.log('Auth status check - Session:', req.session);
-    console.log('Auth status check - User:', req.user);
-    console.log('Auth status check - Is Authenticated:', req.isAuthenticated());
-    
-    if (req.isAuthenticated()) {
-        res.json({ 
-            isAuthenticated: true, 
-            user: req.user,
-            session: req.session.id 
-        });
-    } else {
-        res.status(200).json({ 
+        if (req.isAuthenticated()) {
+            return res.status(200).json({ 
+                isAuthenticated: true, 
+                user: req.user,
+                session: req.session.id 
+            });
+        } 
+
+        return res.status(200).json({ 
             isAuthenticated: false,
             message: 'No active session'
+        });
+    } catch (error) {
+        console.error('Auth status check error:', error);
+        return res.status(200).json({
+            isAuthenticated: false,
+            message: 'Error checking authentication status'
         });
     }
 });
