@@ -9,6 +9,7 @@ interface Client {
     name: string;
     rating: number | string;
     total_ratings: number;
+    whatsapp_number?: string;
 }
 
 interface AssignmentRequest {
@@ -225,8 +226,25 @@ const BrowseRequests: React.FC = () => {
             // Remove the accepted request from the list
             setRequests(requests.filter(req => req.id !== requestId));
             
-            // Navigate to the assignments page
-            navigate('/my-assignments');
+            // Find the request that was accepted
+            const acceptedRequest = requests.find(req => req.id === requestId);
+            
+            if (acceptedRequest) {
+                // Create a WhatsApp message with assignment details
+                const message = `Hello, I'm accepting your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). This is regarding your ${acceptedRequest.assignment_type.toLowerCase()} assignment due on ${new Date(acceptedRequest.deadline).toLocaleDateString()}. I'll start working on it right away. Please let me know if you have any specific requirements or additional details.`;
+                
+                // Open WhatsApp with the client's number and pre-typed message
+                // The number should be properly formatted with country code
+                // For India, it would typically be like: 91XXXXXXXXXX
+                const whatsappUrl = `https://wa.me/${acceptedRequest.client.whatsapp_number || ''}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+                
+                // Also navigate to assignments page as a fallback
+                navigate('/my-assignments');
+            } else {
+                // If for some reason the request can't be found, just navigate to assignments
+                navigate('/my-assignments');
+            }
         } catch (error) {
             console.error('Error accepting request:', error);
             setError('Failed to accept assignment request. Please try again.');
