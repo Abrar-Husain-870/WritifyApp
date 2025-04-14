@@ -385,8 +385,8 @@ const Profile: React.FC = () => {
                                 <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm">
                                     <p className="font-medium text-blue-700 dark:text-blue-200">How to use ImageKit's free image hosting:</p>
                                     <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
-                                        <li>Go to <a href="https://imagekit.io/" target="_blank" rel="noopener noreferrer" className="underline">ImageKit.io</a> and sign up for a free account</li>
-                                        <li>Upload your image to your ImageKit media library</li>
+                                        <li>Go to <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">ImageKit's free image hosting tool</a></li>
+                                        <li>Upload your image using the tool</li>
                                         <li>Copy the URL of the uploaded image</li>
                                         <li>Paste it here</li>
                                     </ol>
