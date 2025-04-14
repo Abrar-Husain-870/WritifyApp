@@ -234,10 +234,27 @@ const BrowseRequests: React.FC = () => {
                 const message = `Hello, I'm accepting your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). This is regarding your ${acceptedRequest.assignment_type.toLowerCase()} assignment due on ${new Date(acceptedRequest.deadline).toLocaleDateString()}. I'll start working on it right away. Please let me know if you have any specific requirements or additional details.`;
                 
                 // Open WhatsApp with the client's number and pre-typed message
-                // The number should be properly formatted with country code
-                // For India, it would typically be like: 91XXXXXXXXXX
-                const whatsappUrl = `https://wa.me/${acceptedRequest.client.whatsapp_number || ''}?text=${encodeURIComponent(message)}`;
-                window.open(whatsappUrl, '_blank');
+                // Format the phone number by removing any non-numeric characters
+                let phoneNumber = acceptedRequest.client.whatsapp_number || '';
+                
+                // Clean the phone number - remove any non-numeric characters
+                phoneNumber = phoneNumber.replace(/\D/g, '');
+                
+                // Ensure it starts with country code (for India, add 91 if not present)
+                if (phoneNumber && !phoneNumber.startsWith('91') && phoneNumber.length === 10) {
+                    phoneNumber = '91' + phoneNumber;
+                }
+                
+                // Create WhatsApp URL with the formatted phone number
+                const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+                
+                // Open WhatsApp in a new tab
+                if (phoneNumber) {
+                    window.open(whatsappUrl, '_blank');
+                } else {
+                    // If no phone number is available, show an alert
+                    alert('Client WhatsApp number is not available. Please check the My Assignments page for contact details.');
+                }
                 
                 // Also navigate to assignments page as a fallback
                 navigate('/my-assignments');
