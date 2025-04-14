@@ -16,10 +16,10 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const handleSignOut = () => {
         // Check if this is a guest session
         if (isGuest) {
-            // For guest users, just clear the guest flag and redirect to login
+            // For guest users, clear the guest flag and redirect to login using window.location
             setIsGuest(false);
             sessionStorage.removeItem('GUEST_MODE');
-            navigate('/login');
+            window.location.href = '/login';
             return;
         }
         

@@ -69,7 +69,10 @@ const Dashboard: React.FC = () => {
                             </div>
                             <div className="mt-3">
                                 <button
-                                    onClick={() => navigate('/login')}
+                                    onClick={() => {
+                                        sessionStorage.removeItem('GUEST_MODE');
+                                        window.location.href = '/login';
+                                    }}
                                     className="text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:text-yellow-600 dark:hover:text-yellow-100 transition-colors"
                                 >
                                     Sign in with your university email for full access →

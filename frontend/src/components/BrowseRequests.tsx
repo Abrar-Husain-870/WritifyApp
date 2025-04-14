@@ -385,7 +385,13 @@ const BrowseRequests: React.FC = () => {
                                             {guestActionAttempt === request.id && isGuest && (
                                                 <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
                                                     <p className="text-sm text-yellow-700 text-center">
-                                                        Please <a href="/login" className="font-medium text-blue-600 hover:text-blue-800">sign in</a> first to use this feature
+                                                        Please <button 
+                                                            onClick={() => {
+                                                                sessionStorage.removeItem('GUEST_MODE');
+                                                                window.location.href = '/login';
+                                                            }} 
+                                                            className="font-medium text-blue-600 hover:text-blue-800 underline"
+                                                        >sign in</button> first to use this feature
                                                     </p>
                                                 </div>
                                             )}
