@@ -222,20 +222,22 @@ const BrowseRequests: React.FC = () => {
             }
 
             const data = await response.json();
+            console.log('API Response data:', data);
             
             // Remove the accepted request from the list
             setRequests(requests.filter(req => req.id !== requestId));
             
             // Find the request that was accepted
             const acceptedRequest = requests.find(req => req.id === requestId);
+            console.log('Accepted request:', acceptedRequest);
+            console.log('Client data:', acceptedRequest?.client);
             
             if (acceptedRequest) {
                 // Create a WhatsApp message with assignment details
                 const message = `Hello, I'm accepting your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). This is regarding your ${acceptedRequest.assignment_type.toLowerCase()} assignment due on ${new Date(acceptedRequest.deadline).toLocaleDateString()}. I'll start working on it right away. Please let me know if you have any specific requirements or additional details.`;
                 
-                // Open WhatsApp with the client's number and pre-typed message
-                // Format the phone number by removing any non-numeric characters
-                let phoneNumber = acceptedRequest.client.whatsapp_number || '';
+                // Get the client's WhatsApp number from the API response
+                let phoneNumber = data.client_whatsapp || '';
                 
                 // Clean the phone number - remove any non-numeric characters
                 phoneNumber = phoneNumber.replace(/\D/g, '');
