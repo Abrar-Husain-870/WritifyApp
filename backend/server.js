@@ -348,7 +348,9 @@ passport.use(new GoogleStrategy({
         
         if (!email.endsWith('@student.iul.ac.in')) {
             console.log('Email validation failed for:', email);
-            return done(new Error('Only university students with .student.iul.ac.in email can sign up!'), null);
+            // Return false for user and an info object with the message
+            // This will be handled by the callback route
+            return done(null, false, { message: 'Only university students with .student.iul.ac.in email can sign up!' });
         }
 
         console.log('Email validation passed, checking user in database');
@@ -410,17 +412,33 @@ app.get('/auth/google', authCors, (req, res, next) => {
     })(req, res, next);
 });
 
-app.get('/auth/google/callback', authCors,
-    passport.authenticate('google', { 
-        failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth`,
-        failureMessage: true,
-        session: true
-    }),
-    (req, res) => {
-        console.log('Google OAuth callback successful');
-        res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
-    }
-);
+app.get('/auth/google/callback', authCors, (req, res, next) => {
+    passport.authenticate('google', (err, user, info) => {
+        console.log('Google OAuth callback - Error:', err?.message);
+        console.log('Google OAuth callback - Info:', info?.message);
+        
+        // If there's an error or no user (authentication failed)
+        if (err || !user) {
+            const errorMessage = err?.message || info?.message || 'Authentication failed';
+            console.log('Authentication failed:', errorMessage);
+            
+            // Redirect to login page with error message
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            return res.redirect(`${frontendUrl}/login?error=unauthorized&message=${encodeURIComponent(errorMessage)}`);
+        }
+        
+        // If authentication succeeded, log in the user
+        req.login(user, (loginErr) => {
+            if (loginErr) {
+                console.error('Login error:', loginErr);
+                return next(loginErr);
+            }
+            
+            console.log('Google OAuth callback successful');
+            return res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000');
+        });
+    })(req, res, next);
+});
 
 // Error handling middleware for authentication
 app.use((err, req, res, next) => {
