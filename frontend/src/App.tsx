@@ -1,6 +1,6 @@
 // Working version - redeployed on April 14, 2025 with guest login feature
 import React, { useState, useEffect, createContext } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import CreateAssignment from './components/CreateAssignment';
@@ -23,7 +23,7 @@ interface GuestContextType {
 
 export const GuestContext = createContext<GuestContextType>({
   isGuest: false,
-  setIsGuest: () => {},
+  setIsGuest: () => {}
 });
 
 // Helper function to clear all cookies
@@ -65,66 +65,59 @@ function App() {
   );
 
   useEffect(() => {
-    // First, check the URL for a force parameter that indicates a forced logout
-    const urlParams = new URLSearchParams(window.location.search);
-    const forceParam = urlParams.get('force');
-    
-    // Check for the FORCE_LOGOUT flag in both localStorage and sessionStorage
-    const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
-    const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
-    
-    // Also check for older logout flags for backward compatibility
-    const oldLogoutLS = localStorage.getItem('user_logged_out');
-    const oldLogoutSS = sessionStorage.getItem('manual_logout');
-    
-    // If any logout flag is present or force parameter is in URL, prevent automatic login
-    if (forceParam === 'true' || forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
-      console.log('Logout flag or force parameter detected, preventing automatic login');
-      
-      // Aggressively clear all auth-related cookies
-      const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
-      cookieNames.forEach(name => {
-        if (!name) return;
-        
-        // Clear with multiple domain/path combinations
-        const hostname = window.location.hostname;
-        const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
-        const domainParts = hostname.split('.');
-        const topDomain = domainParts.length > 1 ? 
-            domainParts.slice(domainParts.length - 2).join('.') : hostname;
-            
-        const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
-        const paths = ['/', '/api', '/auth', '/api/auth', '', null];
-        
-        domains.forEach(domain => {
-            paths.forEach(path => {
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                    (path ? `; path=${path}` : '') + 
-                    (domain ? `; domain=${domain}` : '');
-                    
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                    (path ? `; path=${path}` : '') + 
-                    (domain ? `; domain=${domain}` : '') + 
-                    '; secure';
-            });
-        });
-      });
-      
-      // Set as not authenticated
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      
-      // Keep the logout flags active to prevent auto-login on page refresh
-      // Only clear them if we're on the login page and the user is actively trying to log in
-      if (window.location.pathname === '/login' && !forceParam) {
-        console.log('On login page, clearing logout flags to allow login attempt');
-        localStorage.removeItem('FORCE_LOGOUT');
-        sessionStorage.removeItem('FORCE_LOGOUT');
-        localStorage.removeItem('user_logged_out');
-        sessionStorage.removeItem('manual_logout');
-      } else {
-    const checkAuthStatus = async (retryCount = 0) => {
+    const checkAuthStatus = async () => {
       try {
+        // First, check the URL for a force parameter that indicates a forced logout
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceParam = urlParams.get('force');
+        
+        // Check for the FORCE_LOGOUT flag in both localStorage and sessionStorage
+        const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
+        const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
+        
+        // Also check for older logout flags for backward compatibility
+        const oldLogoutLS = localStorage.getItem('user_logged_out');
+        const oldLogoutSS = sessionStorage.getItem('manual_logout');
+        
+        // If any logout flag is present or force parameter is in URL, prevent automatic login
+        if (forceParam === 'true' || forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
+          console.log('Logout flag or force parameter detected, preventing automatic login');
+          
+          // Aggressively clear all auth-related cookies
+          const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
+          cookieNames.forEach(name => {
+            if (!name) return;
+            
+            // Clear with multiple domain/path combinations
+            const hostname = window.location.hostname;
+            const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+            const domainParts = hostname.split('.');
+            const topDomain = domainParts.length > 1 ? 
+                domainParts.slice(domainParts.length - 2).join('.') : hostname;
+                
+            const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
+            const paths = ['/', '/api', '/auth', '/api/auth', '', null];
+            
+            domains.forEach(domain => {
+                paths.forEach(path => {
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                        (path ? `; path=${path}` : '') + 
+                        (domain ? `; domain=${domain}` : '');
+                        
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                        (path ? `; path=${path}` : '') + 
+                        (domain ? `; domain=${domain}` : '') + 
+                        '; secure';
+                });
+            });
+          });
+          
+          // Set as not authenticated
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
         // Check if we're in guest mode first
         if (sessionStorage.getItem('GUEST_MODE') === 'true') {
           console.log('Guest mode detected in session storage');
@@ -134,50 +127,38 @@ function App() {
           return;
         }
 
-        // Check for logout flags in storage
-        const urlParams = new URLSearchParams(window.location.search);
-        const forceParam = urlParams.get('force');
-        const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
-        const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
-        const oldLogoutLS = localStorage.getItem('user_logged_out');
-        const oldLogoutSS = sessionStorage.getItem('manual_logout');
-        
-        // If any logout flag is present, don't check auth status
-        if (forceParam === 'true' || forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
-          console.log('Logout flags detected, skipping auth check');
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          return;
-        }
+        try {
+          // Fetch auth status from server
+          const response = await fetch(API.auth.status, {
+            credentials: 'include'
+          });
 
-        // Fetch auth status from server
-        const response = await fetch(API.auth.status, {
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to check authentication status');
-        }
-
-        const data = await response.json();
-        
-        if (data.isAuthenticated) {
-          // Check if this is a guest session
-          if (data.user && data.user.isGuest) {
-            setIsGuest(true);
+          if (!response.ok) {
+            throw new Error('Failed to check authentication status');
           }
-          setIsAuthenticated(true);
-        } else {
+
+          const data = await response.json();
+          
+          if (data.isAuthenticated) {
+            // Check if this is a guest session
+            if (data.user && data.user.isGuest) {
+              setIsGuest(true);
+            }
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.log('Error fetching auth status:', error);
           setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error('Error checking auth status:', error);
+        console.error('Error in auth check:', error);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
     };
-
     checkAuthStatus();
   }, []);
 
