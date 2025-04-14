@@ -426,8 +426,8 @@ const BrowseRequests: React.FC = () => {
                                                     <p className="text-sm text-yellow-700 dark:text-yellow-200 text-center">
                                                         Please <button 
                                                             onClick={() => {
-                                                                sessionStorage.removeItem('GUEST_MODE');
-                                                                navigate('/login');
+                                                                sessionStorage.clear();
+                                                                window.location.href = '/login';
                                                             }} 
                                                             className="font-medium text-blue-600 hover:text-blue-800 underline"
                                                         >sign in</button> first to use this feature

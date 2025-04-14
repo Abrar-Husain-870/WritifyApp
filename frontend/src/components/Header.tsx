@@ -19,7 +19,11 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             // For guest users, clear the guest flag and redirect to login using navigate
             setIsGuest(false);
             sessionStorage.removeItem('GUEST_MODE');
-            navigate('/login');
+            // Clear localStorage and sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            // Force navigation to login page with cache-busting parameter
+            window.location.href = `/login?t=${Date.now()}&force=true`;
             return;
         }
         
