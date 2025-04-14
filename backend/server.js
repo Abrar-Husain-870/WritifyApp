@@ -515,9 +515,24 @@ app.get('/auth/status', (req, res) => {
 });
 
 // Guest login endpoint - allows recruiters to explore the app without authentication
-app.post('/auth/guest-login', authCors, (req, res) => {
+app.post('/auth/guest-login', (req, res) => {
+    // Apply CORS for this route specifically
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+    }
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     try {
-        console.log('Guest login initiated');
+        console.log('Guest login initiated from:', req.headers.origin);
+        console.log('Request headers:', req.headers);
         
         // Create a guest user with limited permissions
         const guestUser = {
@@ -532,13 +547,20 @@ app.post('/auth/guest-login', authCors, (req, res) => {
         };
         
         // Store guest user in session only (not in database)
+        if (!req.session) {
+            console.log('No session object available');
+            req.session = {};
+        }
+        
         req.session.guestMode = true;
         req.session.guestUser = guestUser;
         
         // Set session expiration to 2 hours
-        req.session.cookie.maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        if (req.session.cookie) {
+            req.session.cookie.maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        }
         
-        console.log('Guest login successful');
+        console.log('Guest login successful, session:', req.session.id);
         return res.status(200).json({
             success: true,
             user: guestUser,

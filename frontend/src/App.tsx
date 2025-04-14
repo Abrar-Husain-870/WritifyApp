@@ -1,5 +1,5 @@
-// Working version - redeployed on April 6, 2025
-import React, { useState, useEffect, createContext, useContext } from 'react';
+// Working version - redeployed on April 14, 2025 with guest login feature
+import React, { useState, useEffect, createContext } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -60,7 +60,9 @@ const clearAllCookies = () => {
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState<boolean>(false);
+  const [isGuest, setIsGuest] = useState<boolean>(
+    sessionStorage.getItem('GUEST_MODE') === 'true'
+  );
 
   useEffect(() => {
     // First, check the URL for a force parameter that indicates a forced logout
@@ -121,152 +123,58 @@ function App() {
         localStorage.removeItem('user_logged_out');
         sessionStorage.removeItem('manual_logout');
       } else {
-        console.log('Maintaining logout flags to prevent auto-login');
-        // Refresh the logout flags to ensure they don't expire
-        localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-        sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-      }
-      
-      return;
-    }
-    
-    // Check authentication status when the app loads
     const checkAuthStatus = async (retryCount = 0) => {
       try {
-        // Check for logout flags again before making the API call
-        // This ensures we don't check auth status if the user has logged out
+        // Check if we're in guest mode first
+        if (sessionStorage.getItem('GUEST_MODE') === 'true') {
+          console.log('Guest mode detected in session storage');
+          setIsGuest(true);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check for logout flags in storage
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceParam = urlParams.get('force');
         const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
         const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
         const oldLogoutLS = localStorage.getItem('user_logged_out');
         const oldLogoutSS = sessionStorage.getItem('manual_logout');
         
         // If any logout flag is present, don't check auth status
-        if (forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
-          console.log('Logout flags detected, skipping auth check and treating as logged out');
+        if (forceParam === 'true' || forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
+          console.log('Logout flags detected, skipping auth check');
           setIsAuthenticated(false);
           setIsLoading(false);
           return;
         }
 
-        console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
-        
-        // Don't use cache-busting parameter as it triggers CORS preflight
-        // Use the standard URL without modifications
-        const authCheckUrl = API.auth.status;
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
-        const response = await fetch(authCheckUrl, {
-          method: 'GET',
-          credentials: 'include',
-          signal: controller.signal
-          // Don't add custom headers that might trigger CORS preflight
+        // Fetch auth status from server
+        const response = await fetch(API.auth.status, {
+          credentials: 'include'
         });
-        
-        clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
-          throw new Error(`Auth check failed with status: ${response.status}`);
+          throw new Error('Failed to check authentication status');
         }
-        
+
         const data = await response.json();
-        // Removed detailed auth response logging for privacy
         
-        // Check if this is a guest session
-        if (data.isAuthenticated && data.isGuest) {
-          console.log('Guest session detected');
-          setIsAuthenticated(true);
-          setIsGuest(true);
-          
-          // Clear any existing logout flags to ensure we stay logged in
-          localStorage.removeItem('FORCE_LOGOUT');
-          sessionStorage.removeItem('FORCE_LOGOUT');
-          localStorage.removeItem('user_logged_out');
-          sessionStorage.removeItem('manual_logout');
-          
-          // Set guest mode flag in session storage
-          sessionStorage.setItem('GUEST_MODE', 'true');
-          return;
-        }
-        
-        // Verify that the user has a valid university email if they are authenticated
-        if (data.isAuthenticated && data.user && data.user.email) {
-          const email = data.user.email;
-          // Check if the email is from the university domain
-          // Make sure to use lowercase for case-insensitive comparison
-          const emailLower = email.toLowerCase();
-          const isValidUniversityEmail = emailLower.endsWith('@student.iul.ac.in');
-          
-          if (!isValidUniversityEmail) {
-            console.log('Non-university email detected, redirecting to login');
-            
-            // Set logout flags to prevent automatic login attempts
-            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            
-            // Clear all cookies to ensure we're logged out
-            clearAllCookies();
-            
-            setIsAuthenticated(false);
-            setIsGuest(false);
-            
-            // Redirect to login page with unauthorized error
-            window.location.href = '/login?error=unauthorized&force=true';
-            return;
-          } else {
-            console.log('Valid university email confirmed');
-          }
-        }
-        
-        // If we're not authenticated according to the server, set logout flags
-        if (!data.isAuthenticated) {
-          console.log('Server reports not authenticated, setting logout flags');
-          localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-          sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-          setIsAuthenticated(false);
-          setIsGuest(false);
-          sessionStorage.removeItem('GUEST_MODE');
-        } else {
-          // Only set authenticated if we're actually authenticated
-          // AND we don't have any logout flags
-          setIsAuthenticated(true);
-          
-          // Check if this is a guest session from session storage
-          if (sessionStorage.getItem('GUEST_MODE') === 'true') {
+        if (data.isAuthenticated) {
+          // Check if this is a guest session
+          if (data.user && data.user.isGuest) {
             setIsGuest(true);
-          } else {
-            setIsGuest(false);
           }
-          
-          // Clear any existing logout flags to ensure we stay logged in
-          localStorage.removeItem('FORCE_LOGOUT');
-          sessionStorage.removeItem('FORCE_LOGOUT');
-          localStorage.removeItem('user_logged_out');
-          sessionStorage.removeItem('manual_logout');
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
-        
-        // Properly type the error for TypeScript
-        const err = error as Error;
-        
-        // Retry up to 2 times if the error is likely temporary (network issue)
-        if (retryCount < 2 && (
-          err.name === 'AbortError' || 
-          (err.message && err.message.includes('NetworkError'))
-        )) {
-          console.log(`Retrying auth check (${retryCount + 1}/2)...`);
-          setTimeout(() => checkAuthStatus(retryCount + 1), 1000); // Wait 1 second before retry
-          return;
-        }
-        
-        // If authentication check fails after retries, assume user is not authenticated
+        console.error('Error checking auth status:', error);
         setIsAuthenticated(false);
       } finally {
-        if (retryCount === 0 || retryCount >= 2) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
@@ -285,73 +193,32 @@ function App() {
     );
   }
 
+  // Render the appropriate content based on authentication status
   return (
     <ThemeProvider>
       <GuestContext.Provider value={{ isGuest, setIsGuest }}>
         <Router>
-          <AppContent isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
+          <Routes>
+            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
+            <Route path="/account-deleted" element={<AccountDeleted />} />
+            <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+            
+            {/* Protected routes - only accessible if authenticated */}
+            <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
+            <Route path="/create-assignment" element={isAuthenticated && !isGuest ? <CreateAssignment /> : (isGuest ? <Navigate to="/dashboard" /> : <Navigate to="/login" />)} />
+            <Route path="/find-writer" element={isAuthenticated ? <FindWriter /> : <Navigate to="/login" />} />
+            <Route path="/writer-profile/:id" element={isAuthenticated ? <WriterProfile /> : <Navigate to="/login" />} />
+            <Route path="/browse-requests" element={isAuthenticated ? <BrowseRequests /> : <Navigate to="/login" />} />
+            <Route path="/profile" element={isAuthenticated && !isGuest ? <Profile /> : (isGuest ? <Navigate to="/dashboard" /> : <Navigate to="/login" />)} />
+            <Route path="/my-assignments" element={isAuthenticated ? <MyAssignments /> : <Navigate to="/login" />} />
+            <Route path="/my-ratings" element={isAuthenticated ? <MyRatings /> : <Navigate to="/login" />} />
+            <Route path="/tutorial" element={isAuthenticated ? <Tutorial /> : <Navigate to="/login" />} />
+          </Routes>
         </Router>
       </GuestContext.Provider>
     </ThemeProvider>
   );
 }
 
-// Separate component to access useLocation hook
-const AppContent = ({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: boolean | null, setIsAuthenticated: React.Dispatch<React.SetStateAction<boolean | null>> }) => {
-  const location = useLocation();
-  const { isGuest, setIsGuest } = useContext(GuestContext);
-  
-  // Reset authentication state when account-deleted page is accessed
-  // or when there's an unauthorized error in the URL
-  useEffect(() => {
-    // Check for unauthorized error in URL params
-    const params = new URLSearchParams(location.search);
-    const errorParam = params.get('error');
-    const forceParam = params.get('force');
-    
-    if (location.pathname === '/account-deleted' || errorParam === 'unauthorized') {
-      console.log('Detected account-deleted page or unauthorized error, resetting authentication state');
-      setIsAuthenticated(false);
-      setIsGuest(false);
-      sessionStorage.removeItem('GUEST_MODE');
-      
-      // If there's an unauthorized error and force parameter, set logout flags instead of clearing them
-      if (errorParam === 'unauthorized' && forceParam === 'true') {
-        console.log('Unauthorized error with force parameter, setting logout flags');
-        localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-        sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-      } else if (location.pathname === '/account-deleted') {
-        // Only clear logout flags for account deleted page
-        console.log('Account deleted page, clearing logout flags');
-        localStorage.removeItem('FORCE_LOGOUT');
-        sessionStorage.removeItem('FORCE_LOGOUT');
-        localStorage.removeItem('user_logged_out');
-        sessionStorage.removeItem('manual_logout');
-      }
-      
-      // Clear cookies
-      clearAllCookies();
-    }
-  }, [location.pathname, location.search, setIsAuthenticated]);
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
-      <Routes>
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />} />
-        <Route path="/find-writer" element={isAuthenticated ? <FindWriter /> : <Navigate to="/login" replace />} />
-        <Route path="/writer/:id" element={isAuthenticated ? <WriterProfile /> : <Navigate to="/login" replace />} />
-        <Route path="/browse-requests" element={isAuthenticated ? <BrowseRequests /> : <Navigate to="/login" replace />} />
-        <Route path="/profile" element={isAuthenticated && !isGuest ? <Profile /> : isGuest ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-        <Route path="/my-assignments" element={isAuthenticated ? <MyAssignments /> : <Navigate to="/login" replace />} />
-        <Route path="/my-ratings" element={isAuthenticated && !isGuest ? <MyRatings /> : isGuest ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-        <Route path="/tutorial" element={isAuthenticated ? <Tutorial /> : <Navigate to="/login" replace />} />
-        <Route path="/account-deleted" element={<AccountDeleted />} />
-        <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
-      </Routes>
-    </div>
-  );
-};
 
 export default App;

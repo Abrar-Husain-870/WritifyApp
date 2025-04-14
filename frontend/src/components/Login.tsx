@@ -119,10 +119,10 @@ const Login: React.FC<LoginProps> = () => {
         }
     };
     
-    // Handle guest login
-    const handleGuestLogin = async () => {
+    // Handle guest login - simplified version that doesn't require backend
+    const handleGuestLogin = () => {
+        console.log('Guest login button clicked');
         setGuestLoading(true);
-        setError(null);
         
         try {
             // Clear any existing session data
@@ -132,29 +132,31 @@ const Login: React.FC<LoginProps> = () => {
             localStorage.removeItem('FORCE_LOGOUT');
             sessionStorage.removeItem('FORCE_LOGOUT');
             
-            const response = await fetch(API.auth.guestLogin, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+            // Create a client-side only guest session
+            console.log('Creating client-side guest session');
             
-            if (!response.ok) {
-                throw new Error('Failed to create guest session');
-            }
+            // Store guest flag in session storage
+            sessionStorage.setItem('GUEST_MODE', 'true');
             
-            const data = await response.json();
+            // Create a mock guest user
+            const guestUser = {
+                id: 'guest-' + Date.now(),
+                name: 'Guest User',
+                email: 'guest@example.com',
+                profile_picture: null,
+                role: 'guest',
+                writer_status: 'inactive',
+                created_at: new Date().toISOString(),
+                isGuest: true
+            };
             
-            if (data.success) {
-                // Store guest flag in session storage
-                sessionStorage.setItem('GUEST_MODE', 'true');
-                
-                // Navigate to dashboard
-                navigate('/dashboard');
-            } else {
-                throw new Error(data.message || 'Failed to login as guest');
-            }
+            // Store the guest user in session storage
+            sessionStorage.setItem('GUEST_USER', JSON.stringify(guestUser));
+            
+            console.log('Guest mode enabled, redirecting to dashboard');
+            
+            // Navigate to dashboard
+            navigate('/dashboard');
         } catch (error) {
             console.error('Guest login error:', error);
             setError('Failed to continue as guest. Please try again.');
