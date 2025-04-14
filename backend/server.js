@@ -219,40 +219,55 @@ app.use(cors({
     exposedHeaders: ['set-cookie']
 }));
 
+// CORS middleware for static files
+const staticCors = (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Allow any origin for static files
+    next();
+};
+
 // Handle manifest.json requests
-app.get('/manifest.json', (req, res) => {
-    // Apply CORS for this route specifically
-    const origin = req.headers.origin;
-    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    
+app.get('/manifest.json', staticCors, (req, res) => {
     res.status(200).json({
-        "name": "Writify",
         "short_name": "Writify",
+        "name": "Writify - Academic Writing Platform",
         "icons": [
             {
-                "src": "/favicon.ico",
+                "src": "favicon.ico",
                 "sizes": "64x64 32x32 24x24 16x16",
                 "type": "image/x-icon"
+            },
+            {
+                "src": "android-chrome-192x192.png",
+                "type": "image/png",
+                "sizes": "192x192",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "android-chrome-512x512.png",
+                "type": "image/png",
+                "sizes": "512x512",
+                "purpose": "any maskable"
             }
         ],
         "start_url": ".",
         "display": "standalone",
-        "theme_color": "#000000",
+        "theme_color": "#2563eb",
         "background_color": "#ffffff"
     });
 });
 
 // Handle favicon.ico requests
-app.get('/favicon.ico', (req, res) => {
-    // Apply CORS for this route specifically
-    const origin = req.headers.origin;
-    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    
+app.get('/favicon.ico', staticCors, (req, res) => {
     // Return a simple transparent 1x1 pixel ico
+    res.status(200).end();
+});
+
+// Handle android-chrome icon requests
+app.get('/android-chrome-192x192.png', staticCors, (req, res) => {
+    res.status(200).end();
+});
+
+app.get('/android-chrome-512x512.png', staticCors, (req, res) => {
     res.status(200).end();
 });
 
@@ -423,9 +438,17 @@ app.use((err, req, res, next) => {
 app.get('/auth/status', (req, res) => {
     // Apply CORS for this route specifically
     const origin = req.headers.origin;
-    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
+    // Allow any origin for auth status checks
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    if (origin) {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+    }
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
     }
 
     try {
@@ -433,6 +456,7 @@ app.get('/auth/status', (req, res) => {
         console.log('Auth status check - Session ID:', req.session?.id);
         console.log('Auth status check - Is Authenticated:', req.isAuthenticated?.());
         
+        // Always return 200 status code to avoid CORS issues
         if (!req.session) {
             return res.status(200).json({
                 isAuthenticated: false,
