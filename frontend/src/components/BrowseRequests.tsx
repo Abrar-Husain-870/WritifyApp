@@ -305,77 +305,115 @@ const BrowseRequests: React.FC = () => {
                         ) : (
                             requests.map(request => (
                                 <div key={request.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0">
-                                                {getAssignmentTypeIcon(request.assignment_type)}
+                                    <div className="p-6">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{request.course_name}</h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">{request.course_code}</p>
                                             </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {request.course_name} ({request.course_code})
-                                                </p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            <div>
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                                                     {formatAssignmentType(request.assignment_type)}
-                                                </p>
+                                                </span>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-10 w-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                                                </svg>
+                                        
+                                        <div className="mt-4 space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Pages:</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{request.num_pages}</span>
                                             </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {request.client.name}
-                                                </p>
-                                                <div className="flex items-center">
-                                                    <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Deadline:</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                    {new Date(request.deadline).toLocaleDateString()} 
+                                                    ({Math.ceil((new Date(request.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left)
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Estimated Cost:</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">₹{request.estimated_cost}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Expires:</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                    {(() => {
+                                                        // If expiration_deadline exists, use it
+                                                        if (request.expiration_deadline) {
+                                                            const expirationDate = new Date(request.expiration_deadline);
+                                                            const daysLeft = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                                            return `${expirationDate.toLocaleDateString()} (${daysLeft} days)`;
+                                                        }
+                                                        
+                                                        // Otherwise calculate it as 7 days from creation date
+                                                        const creationDate = new Date(request.created_at);
+                                                        const expirationDate = new Date(creationDate);
+                                                        expirationDate.setDate(creationDate.getDate() + 7);
+                                                        const daysLeft = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                                        return `${expirationDate.toLocaleDateString()} (${daysLeft} days)`;
+                                                    })()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0">
+                                                    <svg className="h-10 w-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
                                                     </svg>
-                                                    <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">
-                                                        {request.client.rating 
-                                                            ? (typeof request.client.rating === 'number' 
-                                                                ? request.client.rating.toFixed(1) 
-                                                                : parseFloat(String(request.client.rating)).toFixed(1))
-                                                            : 'N/A'} ({request.client.total_ratings || 0})
-                                                    </span>
+                                                </div>
+                                                <div className="ml-3">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                        {request.client.name}
+                                                    </p>
+                                                    <div className="flex items-center">
+                                                        <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                        <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">
+                                                            {request.client.rating 
+                                                                ? (typeof request.client.rating === 'number' 
+                                                                    ? request.client.rating.toFixed(1) 
+                                                                    : parseFloat(String(request.client.rating)).toFixed(1))
+                                                                : 'N/A'} ({request.client.total_ratings || 0})
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-                                        {guestActionAttempt === request.id && isGuest && (
-                                            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-                                                <p className="text-sm text-yellow-700 dark:text-yellow-200 text-center">
-                                                    Please <button 
-                                                        onClick={() => {
-                                                            sessionStorage.removeItem('GUEST_MODE');
-                                                            window.location.href = '/login';
-                                                        }} 
-                                                        className="font-medium text-blue-600 hover:text-blue-800 underline"
-                                                    >sign in</button> first to use this feature
-                                                </p>
-                                            </div>
-                                        )}
-                                        {isClientRequest(request) && request.status === 'open' ? (
-                                            <button
-                                                onClick={() => setShowDeleteConfirmation(request.id)}
-                                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                            >
-                                                Delete Request
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleAcceptRequest(request.id)}
-                                                disabled={acceptingId === request.id}
-                                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                                            >
-                                                {acceptingId === request.id ? 'Accepting...' : 'Accept Request'}
-                                            </button>
-                                        )}
+                                        
+                                        <div className="mt-6 space-y-2">
+                                            {guestActionAttempt === request.id && isGuest && (
+                                                <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-md">
+                                                    <p className="text-sm text-yellow-700 dark:text-yellow-200 text-center">
+                                                        Please <button 
+                                                            onClick={() => {
+                                                                sessionStorage.removeItem('GUEST_MODE');
+                                                                window.location.href = '/login';
+                                                            }} 
+                                                            className="font-medium text-blue-600 hover:text-blue-800 underline"
+                                                        >sign in</button> first to use this feature
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {isClientRequest(request) && request.status === 'open' ? (
+                                                <button
+                                                    onClick={() => setShowDeleteConfirmation(request.id)}
+                                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                >
+                                                    Delete Request
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleAcceptRequest(request.id)}
+                                                    disabled={acceptingId === request.id}
+                                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                                >
+                                                    {acceptingId === request.id ? 'Accepting...' : 'Accept Request'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))
@@ -385,46 +423,26 @@ const BrowseRequests: React.FC = () => {
             </main>
             {/* Delete Confirmation Modal */}
             {showDeleteConfirmation && (
-                <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-headline" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                            <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-                        </div>
-                        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
-                            <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                                        <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                        </svg>
-                                    </div>
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-headline">
-                                            Delete Request
-                                        </h3>
-                                        <div className="mt-2">
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                Are you sure you want to delete this request? This action cannot be undone.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button
-                                    onClick={() => showDeleteConfirmation && handleDeleteRequest(showDeleteConfirmation)}
-                                    disabled={deletingId !== null}
-                                    className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                                >
-                                    {deletingId !== null ? 'Deleting...' : 'Delete'}
-                                </button>
-                                <button
-                                    onClick={() => setShowDeleteConfirmation(null)}
-                                    className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Delete</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            Are you sure you want to delete this assignment request? This action cannot be undone.
+                        </p>
+                        <div className="flex space-x-4">
+                            <button
+                                onClick={() => setShowDeleteConfirmation(null)}
+                                className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => showDeleteConfirmation && handleDeleteRequest(showDeleteConfirmation)}
+                                disabled={deletingId !== null}
+                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                            >
+                                {deletingId !== null ? 'Deleting...' : 'Delete'}
+                            </button>
                         </div>
                     </div>
                 </div>
