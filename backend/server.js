@@ -1114,10 +1114,36 @@ app.get('/api/my-ratings', isAuthenticated, async (req, res) => {
         
         console.log(`User ${userId} has average rating ${averageRating} from ${totalRatings} ratings`);
         
-        // Return just the user's average rating for now
-        // This simplified endpoint should work even if the detailed ratings query fails
+        // Fetch individual ratings received by this user
+        const ratingsResult = await pool.query(`
+            SELECT 
+                r.id, 
+                r.rating, 
+                r.comment, 
+                r.created_at,
+                r.rater_id,
+                u.name as rater_name,
+                u.profile_picture as rater_profile_picture,
+                ar.course_name,
+                ar.course_code,
+                ar.assignment_type
+            FROM 
+                ratings r
+            JOIN 
+                users u ON r.rater_id = u.id
+            JOIN 
+                assignment_requests ar ON r.assignment_request_id = ar.id
+            WHERE 
+                r.rated_id = $1
+            ORDER BY 
+                r.created_at DESC
+        `, [userId]);
+        
+        console.log(`Found ${ratingsResult.rows.length} individual ratings for user ${userId}`);
+        
+        // Return the user's ratings along with average rating
         res.json({
-            ratings: [],
+            ratings: ratingsResult.rows,
             averageRating,
             totalRatings
         });
