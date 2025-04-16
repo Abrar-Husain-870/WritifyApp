@@ -71,8 +71,8 @@ const MyRatings: React.FC = () => {
         const data = await response.json();
         console.log('Ratings data:', data);
         setRatings(data.ratings || []);
-        setAverageRating(data.average_rating || 0);
-        setTotalRatings(data.total_ratings || 0);
+        setAverageRating(data.averageRating || 0);
+        setTotalRatings(data.totalRatings || 0);
       } catch (error) {
         console.error('Error fetching ratings:', error);
         setError('Failed to load ratings. Please try again later.');
