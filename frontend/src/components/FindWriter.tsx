@@ -46,7 +46,7 @@ const FindWriter: React.FC = () => {
 
     useEffect(() => {
         if (isGuest) {
-            // For guest users, provide sample writers
+            // For guest users, provide sample writers (only active or busy writers)
             const sampleWriters: Writer[] = [
                 {
                     id: 1001,
@@ -75,7 +75,9 @@ const FindWriter: React.FC = () => {
                     university_stream: 'Engineering',
                     sample_work_image: 'https://media-hosting.imagekit.io/f920ed4acd8a4205/Handwriting1.jpg?Expires=1839238770&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=NLW1J-XAEaXxKszQdJsAc5lO9q~AX~RIs7w9nAXRS1ApBekt3Dt~nG5jrqKjd0clq-WZVTTGOVlQ7DbbtHn0rVjJusYWLQJ1EwuHR1yfcBoF-fcVDOPHW1MB63VGOqVKmQU7TfJ1JOBA13yOkJnEfT4Y7pkHaiplC1LO0X-K3p801Y5x8HIEE9VRxUDuCN43g~x74xNYjQbdDFUUgKXvwgtnVBtfOVD9FFgEhr1pIqPd8MO9gxlGuEhTdBrm2cTlyvmaBvEIfmyCu79I6qlUBB0N5I8S97r~8EdhxxYfN4eQ1ZExars0vaij5puvdKiqp29JCmEhTSn5ksBmnVvzYg__'
                 }
+                // Note: We don't include any inactive writers in the sample data
             ];
+            console.log('Showing sample writers for guest mode (all active or busy)');
             setWriters(sampleWriters);
             setLoading(false);
         } else {
@@ -101,15 +103,24 @@ const FindWriter: React.FC = () => {
             })
             .then(data => {
                 console.log('Writers data received:', data);
+                let writersData = [];
+                
                 if (data && Array.isArray(data.writers)) {
-                    setWriters(data.writers);
+                    writersData = data.writers;
                 } else if (data && Array.isArray(data)) {
                     // Handle case where API returns array directly
-                    setWriters(data);
+                    writersData = data;
                 } else {
                     console.warn('Unexpected writers data format:', data);
-                    setWriters([]);
                 }
+                
+                // Filter out inactive writers
+                const activeWriters = writersData.filter((writer: Writer) => 
+                    writer.writer_status === 'active' || writer.writer_status === 'busy'
+                );
+                
+                console.log(`Filtered ${writersData.length - activeWriters.length} inactive writers, showing ${activeWriters.length} active/busy writers`);
+                setWriters(activeWriters);
                 setLoading(false);
             })
             .catch(error => {

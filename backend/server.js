@@ -619,13 +619,16 @@ function isAuthenticated(req, res, next) {
 // API Routes
 app.get('/api/writers', isAuthenticated, async (req, res) => {
     try {
+        // Modified query to only return active or busy writers (not inactive)
         const result = await pool.query(`
             SELECT u.*, wp.sample_work_image 
             FROM users u
             LEFT JOIN writer_portfolios wp ON wp.writer_id = u.id
-            WHERE u.writer_status IS NOT NULL
+            WHERE u.writer_status IN ('active', 'busy')
             ORDER BY u.rating DESC
         `);
+        
+        console.log(`Fetched ${result.rows.length} active/busy writers`);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching writers:', error);
