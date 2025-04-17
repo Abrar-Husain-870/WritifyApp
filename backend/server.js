@@ -649,7 +649,30 @@ app.get('/api/writers/:id', isAuthenticated, async (req, res) => {
             return res.status(404).json({ error: 'Writer not found' });
         }
         
-        res.json(result.rows[0]);
+        // Get the writer data
+        const writerData = result.rows[0];
+        
+        // Fetch individual ratings to calculate the accurate average
+        const ratingsResult = await pool.query(`
+            SELECT rating FROM ratings WHERE rated_id = $1
+        `, [req.params.id]);
+        
+        const ratings = ratingsResult.rows;
+        console.log(`Found ${ratings.length} ratings for writer ${req.params.id}`);
+        
+        // Calculate the average rating from the actual ratings
+        if (ratings.length > 0) {
+            const sum = ratings.reduce((total, current) => total + parseFloat(current.rating), 0);
+            const calculatedAverage = sum / ratings.length;
+            
+            // Update the writer data with the calculated average
+            writerData.rating = calculatedAverage.toFixed(1);
+            writerData.total_ratings = ratings.length;
+            
+            console.log(`Calculated average rating: ${writerData.rating} from ${ratings.length} ratings`);
+        }
+        
+        res.json(writerData);
     } catch (error) {
         console.error('Error fetching writer:', error);
         res.status(500).json({ error: 'Server error' });
