@@ -1248,6 +1248,39 @@ app.get('/api/profile', isAuthenticated, async (req, res) => {
             // Continue without portfolio data
         }
         
+        // Calculate the accurate rating from individual ratings
+        try {
+            // Fetch individual ratings to calculate the accurate average
+            const ratingsResult = await pool.query(`
+                SELECT rating FROM ratings WHERE rated_id = $1
+            `, [req.user.id]);
+            
+            const ratings = ratingsResult.rows;
+            console.log(`Found ${ratings.length} ratings for user ${req.user.id}`);
+            
+            // Calculate the average rating from the actual ratings
+            if (ratings.length > 0) {
+                const sum = ratings.reduce((total, current) => total + parseFloat(current.rating), 0);
+                const calculatedAverage = sum / ratings.length;
+                
+                // Update the user data with the calculated average
+                user.rating = calculatedAverage.toFixed(1);
+                user.total_ratings = ratings.length;
+                
+                console.log(`Profile API: Calculated average rating: ${user.rating} from ${ratings.length} ratings`);
+                
+                // Update the database with the correct values
+                await pool.query(`
+                    UPDATE users
+                    SET rating = $1, total_ratings = $2
+                    WHERE id = $3
+                `, [calculatedAverage.toFixed(1), ratings.length, req.user.id]);
+            }
+        } catch (ratingError) {
+            console.error('Error calculating ratings (non-critical):', ratingError);
+            // Continue without updating ratings
+        }
+        
         res.json(user);
     } catch (error) {
         console.error('Error fetching profile:', error);
