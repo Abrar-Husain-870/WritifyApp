@@ -48,6 +48,11 @@ const WriterProfile: React.FC = () => {
         })
         .then(res => res.json())
         .then(data => {
+            console.log('Writer data received:', data);
+            // Ensure rating is a number for proper display
+            if (data && typeof data.rating === 'string') {
+                data.rating = parseFloat(data.rating) || 0;
+            }
             setWriter(data);
             setLoading(false);
         })
