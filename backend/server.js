@@ -1,14 +1,15 @@
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
-const passport = require('passport');
+const { Pool } = require('pg');
 const session = require('express-session');
+const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-require('dotenv').config();
+const crypto = require('crypto');
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
-const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
+
+// Import security module
+const security = require('./security');
 
 // Encryption utilities for sensitive data
 // Use environment variable for encryption key with a fallback
@@ -244,7 +245,6 @@ pool.on('error', (err) => {
 });
 
 // Initialize database on startup in production
-// This will only create tables if they don't exist
 if (process.env.NODE_ENV === 'production' || process.env.INIT_DB === 'true') {
     console.log('Checking database setup...');
     setupDatabase(pool)
@@ -252,140 +252,19 @@ if (process.env.NODE_ENV === 'production' || process.env.INIT_DB === 'true') {
         .catch(err => console.error('Database check failed:', err));
 }
 
+// Set up Express app
 const app = express();
 
-// Create a proxy around the database pool to prevent DELETE operations during logout
-const originalQuery = pool.query;
-pool.query = function(text, params) {
-    // Check if this is a DELETE operation and logout is in progress
-    if (isLogoutInProgress && text.toUpperCase().includes('DELETE FROM')) {
-        console.error('CRITICAL PROTECTION: Blocked DELETE operation during logout process');
-        console.error('Attempted query:', text);
-        
-        // Return a mock result instead of executing the query
-        return Promise.resolve({
-            rows: [],
-            rowCount: 0,
-            command: 'SELECT', // Pretend it was a SELECT
-            oid: null,
-            fields: []
-        });
-    }
-    
-    // Otherwise, proceed with the original query
-    return originalQuery.apply(this, arguments);
-};
+// Configure security headers with helmet
+security.configureHelmet(app);
 
-// Function to clean up old user data (older than 6 months)
-// DISABLED: This function was deleting user data unexpectedly
-const cleanupOldUserData = async () => {
-    console.log('Data cleanup function is currently disabled to prevent data loss');
-    return;
-    
-    // Original implementation below - currently disabled
-    /*
-    const client = await pool.connect();
-    try {
-        console.log('Running scheduled cleanup of old user data...');
-        
-        // Calculate date 6 months ago
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        
-        // Begin transaction
-        await client.query('BEGIN');
-        
-        // Get users to delete (created more than 6 months ago)
-        const usersToDelete = await client.query(
-            'SELECT id FROM users WHERE created_at < $1 AND role = $2',
-            [sixMonthsAgo.toISOString(), 'student']
-        );
-        
-        const userIds = usersToDelete.rows.map(row => row.id);
-        console.log(`Found ${userIds.length} users to delete`);
-        
-        if (userIds.length > 0) {
-            // Delete related data in proper order to maintain referential integrity
-            // 1. Delete ratings given by or received by these users
-            await client.query(
-                'DELETE FROM ratings WHERE rater_id = ANY($1) OR rated_id = ANY($1)',
-                [userIds]
-            );
-            
-            // 2. Delete writer portfolios
-            await client.query(
-                'DELETE FROM writer_portfolios WHERE writer_id = ANY($1)',
-                [userIds]
-            );
-            
-            // 3. Delete assignments (first get assignment IDs)
-            const assignmentsToDelete = await client.query(
-                'SELECT id FROM assignments WHERE writer_id = ANY($1) OR client_id = ANY($1)',
-                [userIds]
-            );
-            
-            const assignmentIds = assignmentsToDelete.rows.map(row => row.id);
-            
-            // 4. Delete assignment requests
-            await client.query(
-                'DELETE FROM assignment_requests WHERE client_id = ANY($1) OR id IN (SELECT request_id FROM assignments WHERE writer_id = ANY($1))',
-                [userIds, userIds]
-            );
-            
-            // 5. Delete assignments
-            await client.query(
-                'DELETE FROM assignments WHERE writer_id = ANY($1) OR client_id = ANY($1)',
-                [userIds]
-            );
-            
-            // 6. Finally delete the users
-            const deletedUsers = await client.query(
-                'DELETE FROM users WHERE id = ANY($1) RETURNING email',
-                [userIds]
-            );
-            
-            console.log(`Successfully deleted ${deletedUsers.rowCount} users and their data`);
-            console.log('Deleted user emails:', deletedUsers.rows.map(row => row.email));
-        }
-        
-        // Commit transaction
-        await client.query('COMMIT');
-        console.log('Cleanup completed successfully');
-        
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error during user data cleanup:', error);
-    } finally {
-        client.release();
-    }
-    */
-};
+// Apply rate limiting to all routes
+app.use(security.apiLimiter);
 
-// DISABLED: Schedule cleanup to run at midnight every day
-// This will check for users older than 6 months and delete their data
-// cron.schedule('0 0 * * *', cleanupOldUserData);
+// Apply input validation middleware
+app.use(security.validateInput);
 
-// DISABLED: Run cleanup on startup in production (optional)
-/*
-if (process.env.NODE_ENV === 'production') {
-    // Wait 5 minutes after startup before running initial cleanup
-    setTimeout(() => {
-        cleanupOldUserData();
-    }, 5 * 60 * 1000);
-}
-*/
-
-// Rate limiting configuration - protects against brute force attacks
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 15, // Limit each IP to 15 requests per window (15 minutes)
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    message: 'Too many login attempts from this IP, please try again after 15 minutes',
-    skipSuccessfulRequests: true // Don't count successful logins against the rate limit
-});
-
-// Middleware setup
+app.use(express.json());
 app.use(cors({
     origin: function(origin, callback) {
         // Allow all Vercel domains and localhost
@@ -454,8 +333,6 @@ app.get('/android-chrome-512x512.png', staticCors, (req, res) => {
     res.status(200).end();
 });
 
-app.use(express.json());
-
 // Passport serialization
 passport.serializeUser((user, done) => {
     console.log('Serializing user:', user.id);
@@ -483,21 +360,29 @@ const sessionConfig = {
     resave: false,
     saveUninitialized: false,
     proxy: true,
-    cookie: {
-        secure: true,
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'none',
-        path: '/'
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true, // Prevents client-side JS from reading the cookie
+        maxAge: 24 * 60 * 60 * 1000, // Session expires after 24 hours
+        sameSite: 'lax' // Provides some CSRF protection
     }
 };
 
-// Configure session based on environment
-if (process.env.NODE_ENV === 'production') {
-    app.set('trust proxy', 1);
-}
+// Set up session with enhanced security
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true, // Prevents client-side JS from reading the cookie
+        maxAge: 24 * 60 * 60 * 1000, // Session expires after 24 hours
+        sameSite: 'lax' // Provides some CSRF protection
+    }
+}));
 
-app.use(session(sessionConfig));
+// Apply session timeout middleware
+app.use(security.sessionTimeout);
 
 // Passport initialization
 app.use(passport.initialize());
@@ -587,7 +472,7 @@ const authCors = (req, res, next) => {
 };
 
 // Auth routes with better error handling
-app.get('/auth/google', authLimiter, authCors, (req, res, next) => {
+app.get('/auth/google', security.authLimiter, authCors, (req, res, next) => {
     console.log('Starting Google OAuth flow');
     passport.authenticate('google', { 
         scope: ['profile', 'email'],
@@ -595,8 +480,13 @@ app.get('/auth/google', authLimiter, authCors, (req, res, next) => {
     })(req, res, next);
 });
 
-app.get('/auth/google/callback', authLimiter, authCors, (req, res, next) => {
+app.get('/auth/google/callback', security.authLimiter, authCors, (req, res, next) => {
     passport.authenticate('google', (err, user, info) => {
+        // Check if email is locked due to too many failed attempts
+        if (info && info.email && security.isAccountLocked(info.email)) {
+            console.error('Account locked due to too many failed attempts:', info.email);
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=account_locked&t=${Date.now()}`);
+        }
         console.log('Google OAuth callback - Error:', err?.message);
         console.log('Google OAuth callback - Info:', info?.message);
         
@@ -615,6 +505,11 @@ app.get('/auth/google/callback', authLimiter, authCors, (req, res, next) => {
                 res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
                 res.setHeader('Pragma', 'no-cache');
                 res.setHeader('Expires', '0');
+                
+                // Record failed login attempt if email is available
+                if (info && info.email) {
+                    security.recordFailedLogin(info.email);
+                }
                 
                 // Redirect with unauthorized error parameter
                 return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=unauthorized&t=${Date.now()}`);
@@ -711,7 +606,7 @@ app.get('/auth/status', (req, res) => {
 });
 
 // Guest login endpoint - allows recruiters to explore the app without authentication
-app.post('/auth/guest-login', authLimiter, (req, res) => {
+app.post('/auth/guest-login', security.authLimiter, (req, res) => {
     // Apply CORS for this route specifically
     const origin = req.headers.origin;
     if (origin) {
