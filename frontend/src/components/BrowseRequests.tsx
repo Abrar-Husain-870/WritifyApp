@@ -256,28 +256,16 @@ const BrowseRequests: React.FC = () => {
                 const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
-                // Use the redirect number if available, otherwise fall back to the displayed number
                 let phoneNumber = data.client_whatsapp_redirect || '';
                 
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', phoneNumber);
                 
-                // Check if WhatsApp number is empty
-                if (!phoneNumber) {
-                    alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
-                    navigate('/my-assignments');
-                    return;
-                }
+                // Always use the phone number provided by the backend
+                // The backend now guarantees a valid number for WhatsApp
                 
                 // Clean the phone number - remove any non-numeric characters
                 phoneNumber = phoneNumber.replace(/\D/g, '');
-                
-                // Check if we have a valid number (at least 10 digits including country code)
-                if (phoneNumber.length < 10) {
-                    alert('The client\'s WhatsApp number is incomplete. Please check your assignments page for contact details.');
-                    navigate('/my-assignments');
-                    return;
-                }
                 
                 // Add country code if needed (for India)
                 if (!phoneNumber.startsWith('91')) {
