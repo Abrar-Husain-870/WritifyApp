@@ -12,7 +12,10 @@ const rateLimit = require('express-rate-limit');
 
 // Encryption utilities for sensitive data
 // Use environment variable for encryption key with a fallback
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-chars'; // Must be 256 bits (32 characters)
+// For AES-256-CBC, the key must be exactly 32 bytes (characters)
+let rawKey = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-chars';
+// Ensure key is exactly 32 bytes by either padding or truncating
+const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(rawKey)).digest('base64').substring(0, 32);
 const IV_LENGTH = 16; // For AES, this is always 16
 
 // Encrypt sensitive data like phone numbers
