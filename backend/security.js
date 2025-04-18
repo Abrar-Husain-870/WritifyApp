@@ -15,7 +15,9 @@ const apiLimiter = rateLimit({
     max: 100, // limit each IP to 100 requests per windowMs
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes'
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    // Use the forwarded IP in proxied environments like Render
+    trustProxy: true
 });
 
 // More strict rate limiting for authentication routes
@@ -24,7 +26,9 @@ const authLimiter = rateLimit({
     max: 10, // limit each IP to 10 login attempts per hour
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many login attempts from this IP, please try again after an hour'
+    message: 'Too many login attempts from this IP, please try again after an hour',
+    // Use the forwarded IP in proxied environments like Render
+    trustProxy: true
 });
 
 // Function to check if account is locked

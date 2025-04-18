@@ -255,6 +255,9 @@ if (process.env.NODE_ENV === 'production' || process.env.INIT_DB === 'true') {
 // Set up Express app
 const app = express();
 
+// Trust proxies for Render deployment
+app.set('trust proxy', 1);
+
 // Configure security headers with helmet
 security.configureHelmet(app);
 
@@ -377,7 +380,7 @@ app.use(session({
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true, // Prevents client-side JS from reading the cookie
         maxAge: 24 * 60 * 60 * 1000, // Session expires after 24 hours
-        sameSite: 'lax' // Provides some CSRF protection
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Use 'none' in production with HTTPS
     }
 }));
 
