@@ -134,23 +134,9 @@ const WriterProfile: React.FC = () => {
             });
 
             if (response.ok) {
-                // Use the whatsapp_redirect property if available, otherwise fall back to the displayed number
+                // Use ONLY the whatsapp_redirect property from the writer object
+                // This should be the complete phone number stored in the backend
                 let whatsappNumber = writer?.whatsapp_redirect || '';
-                
-                // If we don't have a redirect number but have a displayed number, use it
-                // Even if it's masked (******2167), the backend will handle it correctly
-                if (!whatsappNumber && writer?.whatsapp_number) {
-                    // If the number is masked (starts with ******), extract the last 4 digits
-                    if (writer.whatsapp_number.startsWith('******') && writer.whatsapp_number.length > 6) {
-                        // Extract the last 4 digits for the backend to look up
-                        const lastFourDigits = writer.whatsapp_number.slice(-4);
-                        whatsappNumber = lastFourDigits;
-                        logger.log('Using last 4 digits from masked number:', lastFourDigits);
-                    } else {
-                        // Use the full number if it's not masked
-                        whatsappNumber = writer.whatsapp_number;
-                    }
-                }
                 
                 // Check if WhatsApp number is empty
                 if (!whatsappNumber) {
@@ -163,18 +149,25 @@ const WriterProfile: React.FC = () => {
                     return;
                 }
                 
+                // Clean the phone number to contain only digits
+                whatsappNumber = whatsappNumber.replace(/\D/g, '');
+                
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', whatsappNumber);
                 
-                // Only add country code if needed, preserve the original format otherwise
-                if (!whatsappNumber.startsWith('91') && !whatsappNumber.startsWith('+91')) {
+                // Ensure the number has the country code
+                if (whatsappNumber.length === 10) {
                     // Add country code (for India) if not already present
                     whatsappNumber = '91' + whatsappNumber;
                     logger.log('Added country code to number:', whatsappNumber);
-                } else if (whatsappNumber.startsWith('+91')) {
-                    // Remove the + for WhatsApp URL format
-                    whatsappNumber = whatsappNumber.substring(1);
-                    logger.log('Removed + from country code:', whatsappNumber);
+                } else if (whatsappNumber.length < 10) {
+                    setSuccess('Request submitted successfully!');
+                    alert('The writer has an invalid phone number. Please check your assignments page later.');
+                    
+                    setTimeout(() => {
+                        navigate('/dashboard');
+                    }, 1000);
+                    return;
                 }
                 
                 const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}. Let's discuss the details.`);

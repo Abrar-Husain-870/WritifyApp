@@ -259,6 +259,9 @@ const BrowseRequests: React.FC = () => {
                 // Use only the redirect number from the backend - this should be the original number
                 let phoneNumber = data.client_whatsapp_redirect || '';
                 
+                // Clean the phone number to contain only digits
+                phoneNumber = phoneNumber.replace(/\D/g, '');
+                
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', phoneNumber);
                 
@@ -269,15 +272,15 @@ const BrowseRequests: React.FC = () => {
                     return;
                 }
                 
-                // Only add country code if needed, preserve the original format otherwise
-                if (!phoneNumber.startsWith('91') && !phoneNumber.startsWith('+91')) {
+                // Ensure the number has the country code
+                if (phoneNumber.length === 10) {
                     // Add country code (for India) if not already present
                     phoneNumber = '91' + phoneNumber;
                     logger.log('Added country code to number:', phoneNumber);
-                } else if (phoneNumber.startsWith('+91')) {
-                    // Remove the + for WhatsApp URL format
-                    phoneNumber = phoneNumber.substring(1);
-                    logger.log('Removed + from country code:', phoneNumber);
+                } else if (phoneNumber.length < 10) {
+                    alert('The client has an invalid phone number. Please check your assignments page for contact details.');
+                    navigate('/my-assignments');
+                    return;
                 }
                 
                 // Create WhatsApp URL with the formatted phone number
