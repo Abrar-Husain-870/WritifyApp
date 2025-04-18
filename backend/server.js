@@ -18,8 +18,7 @@ let rawKey = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-ch
 const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(rawKey)).digest('base64').substring(0, 32);
 const IV_LENGTH = 16; // For AES, this is always 16
 
-// Encrypt and store phone numbers securely
-// We'll encrypt the full number but also store a reference for WhatsApp integration
+// Store phone numbers without masking for better WhatsApp integration
 function storePhoneNumber(text) {
     if (!text) return text;
     try {
@@ -38,36 +37,38 @@ function storePhoneNumber(text) {
             return text;
         }
         
-        // If the number starts with ESEC-, it's already encrypted
-        if (text.startsWith('ESEC-')) {
-            console.log('Received encrypted number, returning as is');
+        // If the number starts with ESEC- or PH-, convert it back to a full number if possible
+        if (text.startsWith('ESEC-') || text.startsWith('PH-')) {
+            const userId = getCurrentUserId();
+            if (userId) {
+                // Try to get the full number from the lookup table
+                let fullNumber = null;
+                
+                if (text.startsWith('PH-')) {
+                    const last4 = text.slice(-4);
+                    fullNumber = getFullPhoneNumberByLast4(userId, last4);
+                }
+                
+                if (fullNumber) {
+                    console.log('Converting back to full number for better integration');
+                    return fullNumber;
+                }
+            }
+            
+            // If we couldn't convert it, just return the original
             return text;
         }
         
-        // For a complete phone number, encrypt it for database storage
+        // For a complete phone number, store it directly for better WhatsApp integration
         if (cleanNumber.length >= 10) {
-            // Store the full number in the lookup table for WhatsApp integration
-            // This keeps it in memory but not in the database
+            // Also store in the lookup table for redundancy
             const userId = getCurrentUserId();
             if (userId) {
                 storeFullPhoneNumber(userId, cleanNumber);
             }
             
-            // Encrypt the number for database storage, ensuring it fits in VARCHAR(20)
-            // We need to use a more compact encryption method
-            // Instead of full Base64, we'll use a shortened hash + last 4 digits approach
-            
-            // Store the full number in memory for WhatsApp functionality
-            // We already have userId from above, so don't redeclare it
-            
-            // For database storage, create a compact reference that fits in VARCHAR(20)
-            // Use the last 4 digits plus a short hash of the number
-            const last4 = cleanNumber.slice(-4);
-            const shortHash = createShortHash(cleanNumber);
-            const compactReference = `PH-${shortHash}${last4}`;
-            
-            console.log('Storing compact phone reference for security');
-            return compactReference;
+            console.log('Storing full phone number for WhatsApp integration');
+            return cleanNumber;
         }
         
         // If it's not a complete number, just return it as is
@@ -78,7 +79,7 @@ function storePhoneNumber(text) {
     }
 }
 
-// Decrypt and retrieve phone numbers securely
+// Retrieve phone number without masking for better WhatsApp integration
 function retrievePhoneNumber(text) {
     if (!text) return text;
     try {
@@ -120,7 +121,7 @@ function retrievePhoneNumber(text) {
             }
         }
         
-        // For all other formats, return as is
+        // For all other formats, return as is (should be the full number)
         return text;
     } catch (error) {
         console.error('Phone retrieval error:', error);
@@ -1109,9 +1110,17 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         if (client.whatsapp_number) {
             console.log(`Client ${client.id} has WhatsApp number: ${client.whatsapp_number}`);
             
-            // Check the format of the phone number
-            if (client.whatsapp_number.startsWith('PH-')) {
-                // It's in our compact reference format, retrieve the full number
+            // With our new approach, the phone number should be stored directly without masking
+            // So we can use it directly for WhatsApp redirection
+            if (!client.whatsapp_number.startsWith('WPHN-') && 
+                !client.whatsapp_number.startsWith('PH-') && 
+                !client.whatsapp_number.startsWith('ESEC-')) {
+                // If it's already a full number (our new format), use it directly
+                whatsappRedirect = client.whatsapp_number.replace(/[^0-9]/g, '');
+                console.log(`Using direct WhatsApp number: ${whatsappRedirect}`);
+            } 
+            // For compact reference format (PH-xxxYYYY), retrieve the full number
+            else if (client.whatsapp_number.startsWith('PH-')) {
                 try {
                     // Extract the last 4 digits
                     const last4 = client.whatsapp_number.slice(-4);
@@ -1135,23 +1144,18 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                 // Store in lookup table for future use
                 storeFullPhoneNumber(client.id, whatsappRedirect);
                 
-                // Create a compact reference for database storage
-                const last4 = whatsappRedirect.slice(-4);
-                const shortHash = createShortHash(whatsappRedirect);
-                const compactReference = `PH-${shortHash}${last4}`;
-                
-                // Update the database with the compact reference
+                // Store the full number directly in the database for better WhatsApp integration
                 try {
                     await pool.query(
                         'UPDATE users SET whatsapp_number = $1 WHERE id = $2',
-                        [compactReference, client.id]
+                        [whatsappRedirect, client.id]
                     );
-                    console.log(`Updated database with compact reference for user ${client.id}`);
+                    console.log(`Updated database with full phone number for user ${client.id}`);
                     
-                    // Store the full number in the lookup table
+                    // Also store in the lookup table for redundancy
                     storeFullPhoneNumber(client.id, whatsappRedirect);
                 } catch (updateErr) {
-                    console.error('Error updating phone reference:', updateErr);
+                    console.error('Error updating phone number:', updateErr);
                 }
             } else {
                 // For backward compatibility with old format (WPHN-1234)
@@ -1195,22 +1199,19 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         }
         
         // Return success with client WhatsApp number for direct contact
-        // With our security approach, we're sending the decrypted number only for WhatsApp redirection
-        // but keeping it encrypted in the database
+        // With our new approach, we're sending the full phone number for better WhatsApp integration
         res.json({
             success: true,
             message: 'Assignment assigned successfully',
             client_id: client.id,
             client_name: client.name,
-            // For client_whatsapp, we'll send a masked version for display purposes
-            client_whatsapp: whatsappRedirect ? `******${whatsappRedirect.slice(-4)}` : null,
-            // For redirection, we'll send the full decrypted number
-            client_whatsapp_redirect: whatsappRedirect || null
+            client_whatsapp: client.whatsapp_number || null,
+            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
         });
         
         console.log('Response sent with WhatsApp data:', {
-            client_whatsapp: whatsappRedirect ? `******${whatsappRedirect.slice(-4)}` : null,
-            client_whatsapp_redirect: whatsappRedirect ? 'FULL_NUMBER_AVAILABLE' : null
+            client_whatsapp: client.whatsapp_number || null,
+            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
         });
     } catch (error) {
         console.error('Error accepting assignment request:', error);
