@@ -80,12 +80,10 @@ function getFullPhoneNumber(userId, lastFourDigits) {
     }
     
     // If we don't have the full number in our lookup table,
-    // try to get it from the database or use a default format
-    // For this university app, we'll use a standard format for Indian phone numbers
+    // we'll just return the last 4 digits with the country code
+    // This will trigger the frontend to show an error about incomplete number
     if (lastFourDigits) {
-        // For Indian numbers, we'll use a standard 10-digit format with the country code
-        // This is a placeholder - in a real app, you'd retrieve the actual number from a secure database
-        return '9198765' + lastFourDigits; // 91 + area code + prefix + last 4 digits
+        return lastFourDigits; // Just return the last 4 digits, frontend will handle this
     }
     
     return null;

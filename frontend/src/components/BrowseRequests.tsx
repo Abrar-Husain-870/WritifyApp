@@ -267,17 +267,10 @@ const BrowseRequests: React.FC = () => {
                 
                 // Ensure we have a valid phone number for WhatsApp
                 if (!phoneNumber || phoneNumber.length < 10) {
-                    // If we have a very short number (like just the last 4 digits),
-                    // use a standard format for Indian phone numbers
-                    if (phoneNumber.length > 0 && phoneNumber.length <= 4) {
-                        // For Indian numbers with just the last 4 digits, use a standard format
-                        phoneNumber = '9198765' + phoneNumber.padStart(4, '0');
-                        logger.log('Using standard format with last digits:', phoneNumber);
-                    } else {
-                        // Default to a placeholder number if we don't have anything usable
-                        phoneNumber = '919876543210';
-                        logger.log('Using placeholder number:', phoneNumber);
-                    }
+                    // If we don't have a valid phone number, show an alert and don't redirect
+                    alert('The client has not added their WhatsApp number or it is incomplete. Please check your assignments page for contact details.');
+                    navigate('/my-assignments');
+                    return;
                 } else if (!phoneNumber.startsWith('91')) {
                     // Ensure it starts with country code (for India)
                     phoneNumber = '91' + phoneNumber;

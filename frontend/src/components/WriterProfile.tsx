@@ -156,17 +156,14 @@ const WriterProfile: React.FC = () => {
                 
                 // Ensure we have a valid phone number for WhatsApp
                 if (!whatsappNumber || whatsappNumber.length < 10) {
-                    // If we have a very short number (like just the last 4 digits),
-                    // use a standard format for Indian phone numbers
-                    if (whatsappNumber.length > 0 && whatsappNumber.length <= 4) {
-                        // For Indian numbers with just the last 4 digits, use a standard format
-                        whatsappNumber = '9198765' + whatsappNumber.padStart(4, '0');
-                        logger.log('Using standard format with last digits:', whatsappNumber);
-                    } else {
-                        // Default to a placeholder number if we don't have anything usable
-                        whatsappNumber = '919876543210';
-                        logger.log('Using placeholder number:', whatsappNumber);
-                    }
+                    // If we don't have a valid phone number, show an alert and don't redirect
+                    setSuccess('Request submitted successfully!');
+                    alert('The writer has not added their WhatsApp number or it is incomplete. Please check your assignments page later.');
+                    
+                    setTimeout(() => {
+                        navigate('/dashboard');
+                    }, 1000);
+                    return;
                 } else if (!whatsappNumber.startsWith('91')) {
                     // Ensure it starts with country code (for India)
                     whatsappNumber = '91' + whatsappNumber;
