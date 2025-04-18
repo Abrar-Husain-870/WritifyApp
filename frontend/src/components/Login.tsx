@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API } from '../utils/api';
+import logger from '../utils/logger';
+import { GuestContext } from '../App';
 
 interface LoginProps {}
 
@@ -133,7 +135,7 @@ const Login: React.FC<LoginProps> = () => {
     
     // Handle guest login - simplified version that doesn't require backend
     const handleGuestLogin = () => {
-        console.log('Guest login button clicked');
+        logger.log('Guest login button clicked');
         setGuestLoading(true);
         
         try {
@@ -145,7 +147,7 @@ const Login: React.FC<LoginProps> = () => {
             sessionStorage.removeItem('FORCE_LOGOUT');
             
             // Create a client-side only guest session
-            console.log('Creating client-side guest session');
+            logger.log('Creating client-side guest session');
             
             // Store guest flag in session storage
             sessionStorage.setItem('GUEST_MODE', 'true');
@@ -165,7 +167,7 @@ const Login: React.FC<LoginProps> = () => {
             // Store the guest user in session storage
             sessionStorage.setItem('GUEST_USER', JSON.stringify(guestUser));
             
-            console.log('Guest mode enabled, redirecting to dashboard');
+            logger.log('Guest mode enabled, redirecting to dashboard');
             
             // Force a hard redirect instead of using React Router navigation
             // This ensures the app state is fully refreshed with the guest mode

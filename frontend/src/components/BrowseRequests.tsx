@@ -224,15 +224,15 @@ const BrowseRequests: React.FC = () => {
             }
 
             const data = await response.json();
-            console.log('API Response data:', data);
+            logger.log('API Response data:', data);
             
             // Remove the accepted request from the list
             setRequests(requests.filter(req => req.id !== requestId));
             
             // Find the request that was accepted
             const acceptedRequest = requests.find(req => req.id === requestId);
-            console.log('Accepted request:', acceptedRequest);
-            console.log('Client data:', acceptedRequest?.client);
+            logger.log('Accepted request:', acceptedRequest);
+            logger.log('Client data:', acceptedRequest?.client);
             
             if (acceptedRequest) {
                 // Create a WhatsApp message with assignment details

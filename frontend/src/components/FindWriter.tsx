@@ -78,7 +78,7 @@ const FindWriter: React.FC = () => {
                 }
                 // Note: We don't include any inactive writers in the sample data
             ];
-            console.log('Showing sample writers for guest mode (all active or busy)');
+            logger.log('Showing sample writers for guest mode (all active or busy)');
             setWriters(sampleWriters);
             setLoading(false);
         } else {
