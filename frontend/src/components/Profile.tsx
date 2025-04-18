@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header'; // Assuming the Header component is in the same directory
 import { API } from '../utils/api'; // Correct import path for the API utility
+import { debugLog, errorLog } from '../utils/logUtil';
 
 import { GuestContext } from '../App';
 
@@ -91,7 +92,7 @@ const Profile: React.FC = () => {
                 return;
             }
             
-            console.log('Submitting profile update with data:', { writer_status: status, university_stream: user?.university_stream || '', whatsapp_number: user?.whatsapp_number || '' });
+            debugLog('Submitting profile update with data:', { writer_status: status, university_stream: user?.university_stream || '', whatsapp_number: user?.whatsapp_number || '' });
             
             const response = await fetch(API.users.updateWriterProfile, {
                 method: 'PUT',
@@ -107,16 +108,16 @@ const Profile: React.FC = () => {
                 })
             });
 
-            console.log('Response status:', response.status);
+            debugLog('Response status:', response.status);
             
             if (response.ok) {
                 const updatedUser = await response.json();
-                console.log('Profile data received:', updatedUser);
+                debugLog('Profile data received:', updatedUser);
                 setUser(updatedUser);
                 setMessage({ type: 'success', text: 'Writer status updated successfully!' });
             } else {
                 const errorText = await response.text();
-                console.error('Profile update error:', errorText);
+                errorLog('Profile update error:', errorText);
                 try {
                     const error = JSON.parse(errorText);
                     setMessage({ type: 'error', text: error.error || 'Failed to update writer status' });
@@ -125,7 +126,7 @@ const Profile: React.FC = () => {
                 }
             }
         } catch (error) {
-            console.error('Error updating writer status:', error);
+            errorLog('Error updating writer status:', error);
             setMessage({ type: 'error', text: 'Failed to update writer status' });
         }
     };

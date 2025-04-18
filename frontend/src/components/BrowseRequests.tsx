@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { debugLog, errorLog } from '../utils/logUtil';
 import { exitGuestMode } from '../utils/auth';
 
 interface Client {
@@ -122,7 +123,7 @@ const BrowseRequests: React.FC = () => {
             })
             .finally(() => {
                 // Fetch assignment requests
-                console.log('Fetching assignment requests from:', API.assignmentRequests.all);
+                debugLog('Fetching assignment requests from:', API.assignmentRequests.all);
                 fetch(API.assignmentRequests.all, {
                     method: 'GET',
                     credentials: 'include',
@@ -133,29 +134,29 @@ const BrowseRequests: React.FC = () => {
                 })
                 .then(res => {
                     if (!res.ok) {
-                        console.error(`Assignment requests fetch failed with status: ${res.status}`);
+                        errorLog(`Requests fetch failed with status: ${res.status}`);
                         return res.text().then(text => {
-                            console.error('Error response text:', text);
+                            errorLog('Error response text:', text);
                             throw new Error(`HTTP error! Status: ${res.status}`);
                         });
                     }
                     return res.json();
                 })
                 .then(data => {
-                    console.log('Assignment requests data received:', data);
+                    debugLog('Assignment requests data received:', data);
                     if (data && Array.isArray(data.requests)) {
                         setRequests(data.requests);
                     } else if (data && Array.isArray(data)) {
                         // Handle case where API returns array directly
                         setRequests(data);
                     } else {
-                        console.log('Unexpected assignment requests data format:', data);
+                        errorLog('Unexpected assignment requests data format:', data);
                         setRequests([]);
                     }
                     setLoading(false);
                 })
-                .catch(err => {
-                    console.error('Error fetching requests:', err);
+                .catch(error => {
+                    errorLog('Error fetching assignment requests:', error);
                     setLoading(false);
                     setError('Failed to load assignment requests. Please try again later.');
                 });
@@ -240,14 +241,14 @@ const BrowseRequests: React.FC = () => {
             }
 
             const data = await response.json();
-            console.log('API Response data:', data);
+            debugLog('API Response data:', data);
             
             // Remove the accepted request from the list
             setRequests(requests.filter(req => req.id !== requestId));
             
             // Find the request that was accepted
             const acceptedRequest = requests.find(req => req.id === requestId);
-            console.log('Accepted request:', acceptedRequest);
+            debugLog('Accepted request:', acceptedRequest);
             // Process client data without logging sensitive information
             
             if (acceptedRequest) {
@@ -330,7 +331,7 @@ const BrowseRequests: React.FC = () => {
                 navigate('/my-assignments');
             }
         } catch (error) {
-            console.error('Error accepting request:', error);
+            errorLog('Error accepting assignment request:', error);
             setError('Failed to accept assignment request. Please try again.');
         } finally {
             setAcceptingId(null);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Header from './Header';
 import RatingModal from './RatingModal';
+import { debugLog, errorLog } from '../utils/logUtil';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
 
@@ -171,7 +172,7 @@ const MyAssignments: React.FC = () => {
         
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            console.error('Authentication error');
+            errorLog('Authentication error');
             navigate('/login');
             return;
           }
@@ -179,12 +180,12 @@ const MyAssignments: React.FC = () => {
         }
         
         const data = await response.json();
-        console.log('Assignments data:', data);
+        debugLog('Assignments data:', data);
         setAssignments(data.assignments || []);
         setUserRole(data.role);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching assignments:', err);
+        errorLog('Error fetching assignments:', err);
         setError('Failed to load assignments. Please try again later.');
         setLoading(false);
       }

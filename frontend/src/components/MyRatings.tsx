@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { debugLog, errorLog } from '../utils/logUtil';
 
 interface Rating {
   id: number;
@@ -53,14 +54,14 @@ const MyRatings: React.FC = () => {
         
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            console.error('Authentication error');
+            errorLog('Authentication error');
             navigate('/login');
             return;
           }
           
           // Try to get more detailed error information
           const errorText = await response.text();
-          console.error('Error response:', errorText);
+          errorLog('Error response:', errorText);
           try {
             const errorData = JSON.parse(errorText);
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -70,12 +71,12 @@ const MyRatings: React.FC = () => {
         }
         
         const data = await response.json();
-        console.log('Ratings data:', data);
+        debugLog('Ratings data:', data);
         setRatings(data.ratings || []);
         setAverageRating(data.averageRating || 0);
         setTotalRatings(data.totalRatings || 0);
       } catch (error) {
-        console.error('Error fetching ratings:', error);
+        errorLog('Error fetching ratings:', error);
         setError('Failed to load ratings. Please try again later.');
       } finally {
         setLoading(false);

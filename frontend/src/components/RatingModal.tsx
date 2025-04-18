@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { API } from '../utils/api';
+import { debugLog, errorLog } from '../utils/logUtil';
 
 
 interface RatingModalProps {
@@ -40,7 +41,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
     setError(null);
 
     try {
-      console.log('Submitting rating with data:', {
+      debugLog('Submitting rating with data:', {
         rated_id: ratedUserId,
         rating,
         comment,
@@ -69,7 +70,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
       onRatingSubmitted();
       onClose();
     } catch (error) {
-      console.error('Error submitting rating:', error);
+      errorLog('Error submitting rating:', error);
       setError('Failed to submit rating. Please try again.');
     } finally {
       setIsSubmitting(false);
