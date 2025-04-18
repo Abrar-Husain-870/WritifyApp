@@ -220,7 +220,24 @@ const BrowseRequests: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                // Try to get the detailed error message from the response
+                const errorText = await response.text();
+                let errorMessage = `HTTP error! Status: ${response.status}`;
+                
+                try {
+                    // Try to parse the error as JSON
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.error) {
+                        errorMessage = errorJson.error;
+                    }
+                } catch (e) {
+                    // If parsing fails, use the raw text if available
+                    if (errorText) {
+                        errorMessage = errorText;
+                    }
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();

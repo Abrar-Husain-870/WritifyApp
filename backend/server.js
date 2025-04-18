@@ -907,9 +907,9 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         
         // Create a new assignment
         await pool.query(
-            `INSERT INTO assignments (request_id, writer_id, status, created_at)
-             VALUES ($1, $2, 'in_progress', NOW())`,
-            [requestId, writerId]
+            `INSERT INTO assignments (request_id, writer_id, client_id, status, created_at)
+             VALUES ($1, $2, $3, 'in_progress', NOW())`,
+            [requestId, writerId, client.id]
         );
         
         // Update the request status
@@ -936,9 +936,8 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             client_whatsapp_redirect: whatsappRedirect
         });
     } catch (error) {
-        await pool.query('ROLLBACK');
         console.error('Error accepting assignment request:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Server error: ' + error.message });
     }
 });
 
