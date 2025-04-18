@@ -256,31 +256,28 @@ const BrowseRequests: React.FC = () => {
                 const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
+                // Use only the redirect number from the backend - this should be the original number
                 let phoneNumber = data.client_whatsapp_redirect || '';
                 
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', phoneNumber);
                 
-                // Check if WhatsApp number is empty or too short
-                if (!phoneNumber || phoneNumber.length < 4) {
+                // Check if WhatsApp number is available
+                if (!phoneNumber) {
                     alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
                     navigate('/my-assignments');
                     return;
                 }
                 
-                // Clean the phone number - remove any non-numeric characters
-                phoneNumber = phoneNumber.replace(/\D/g, '');
-                
-                // Ensure we have a valid phone number for WhatsApp
-                if (phoneNumber.length < 10) {
-                    // If the number is incomplete (less than 10 digits), add a prefix
-                    // This ensures WhatsApp redirection works for testing purposes
-                    phoneNumber = '9198765' + phoneNumber.padStart(4, '0');
-                    logger.log('Padded incomplete number for testing:', phoneNumber);
-                } else if (!phoneNumber.startsWith('91')) {
-                    // Ensure it starts with country code (for India)
+                // Only add country code if needed, preserve the original format otherwise
+                if (!phoneNumber.startsWith('91') && !phoneNumber.startsWith('+91')) {
+                    // Add country code (for India) if not already present
                     phoneNumber = '91' + phoneNumber;
                     logger.log('Added country code to number:', phoneNumber);
+                } else if (phoneNumber.startsWith('+91')) {
+                    // Remove the + for WhatsApp URL format
+                    phoneNumber = phoneNumber.substring(1);
+                    logger.log('Removed + from country code:', phoneNumber);
                 }
                 
                 // Create WhatsApp URL with the formatted phone number

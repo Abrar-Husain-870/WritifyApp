@@ -74,20 +74,13 @@ function getFullPhoneNumber(userId, lastFourDigits) {
     const storedNumber = whatsappLookup.get(userId.toString());
     if (storedNumber) {
         console.log(`Found stored number for user ${userId}: ${storedNumber}`);
-        // Ensure it has the country code (for India)
-        if (storedNumber.startsWith('91')) {
-            return storedNumber;
-        } else {
-            return '91' + storedNumber;
-        }
+        // Return the original stored number without any modifications
+        return storedNumber;
     }
     
-    // If we don't have a stored number, just return the last 4 digits
-    // The frontend will handle validation
-    if (lastFourDigits) {
-        return lastFourDigits;
-    }
-    
+    // If we don't have the full number in our lookup table, return null
+    // The frontend will show an appropriate message
+    console.log(`No phone number found in lookup table for user ${userId}`);
     return null;
 }
 

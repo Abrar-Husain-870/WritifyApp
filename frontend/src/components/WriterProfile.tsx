@@ -135,9 +135,14 @@ const WriterProfile: React.FC = () => {
 
             if (response.ok) {
                 // Use the whatsapp_redirect property if available, otherwise fall back to the displayed number
-                let whatsappNumber = writer?.whatsapp_redirect || writer?.whatsapp_number || '';
+                let whatsappNumber = writer?.whatsapp_redirect || '';
                 
-                // Check if WhatsApp number is empty or just masked without a redirect number
+                // If we don't have a redirect number but have a displayed number that's not masked, use it
+                if (!whatsappNumber && writer?.whatsapp_number && !writer?.whatsapp_number.startsWith('******')) {
+                    whatsappNumber = writer.whatsapp_number;
+                }
+                
+                // Check if WhatsApp number is empty or masked
                 if (!whatsappNumber || whatsappNumber.startsWith('******')) {
                     setSuccess('Request submitted successfully!');
                     alert('The writer has not added their WhatsApp number. Please check your assignments page later.');
@@ -151,28 +156,15 @@ const WriterProfile: React.FC = () => {
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', whatsappNumber);
                 
-                // Clean the number to contain only digits
-                whatsappNumber = whatsappNumber.replace(/\D/g, '');
-                
-                // Ensure we have a valid phone number for WhatsApp
-                if (!whatsappNumber) {
-                    // If we don't have a valid phone number, show an alert and don't redirect
-                    setSuccess('Request submitted successfully!');
-                    alert('The writer has not added their WhatsApp number. Please check your assignments page later.');
-                    
-                    setTimeout(() => {
-                        navigate('/dashboard');
-                    }, 1000);
-                    return;
-                } else if (whatsappNumber.length < 10) {
-                    // If the number is incomplete (less than 10 digits), add a prefix
-                    // This ensures WhatsApp redirection works for testing purposes
-                    whatsappNumber = '9198765' + whatsappNumber.padStart(4, '0');
-                    logger.log('Padded incomplete number for testing:', whatsappNumber);
-                } else if (!whatsappNumber.startsWith('91')) {
-                    // Ensure it starts with country code (for India)
+                // Only add country code if needed, preserve the original format otherwise
+                if (!whatsappNumber.startsWith('91') && !whatsappNumber.startsWith('+91')) {
+                    // Add country code (for India) if not already present
                     whatsappNumber = '91' + whatsappNumber;
                     logger.log('Added country code to number:', whatsappNumber);
+                } else if (whatsappNumber.startsWith('+91')) {
+                    // Remove the + for WhatsApp URL format
+                    whatsappNumber = whatsappNumber.substring(1);
+                    logger.log('Removed + from country code:', whatsappNumber);
                 }
                 
                 const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}. Let's discuss the details.`);
