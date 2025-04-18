@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
+import logger from '../utils/logger';
 import { GuestContext } from '../App';
 import { exitGuestMode } from '../utils/auth';
 
@@ -118,11 +119,11 @@ const BrowseRequests: React.FC = () => {
                 setCurrentUserId(data.id);
             })
             .catch(err => {
-                console.error('Error fetching user profile:', err);
+                logger.error('Error fetching user profile', err);
             })
             .finally(() => {
                 // Fetch assignment requests
-                console.log('Fetching assignment requests from:', API.assignmentRequests.all);
+                logger.log('Fetching assignment requests from:', API.assignmentRequests.all);
                 fetch(API.assignmentRequests.all, {
                     method: 'GET',
                     credentials: 'include',
@@ -133,29 +134,29 @@ const BrowseRequests: React.FC = () => {
                 })
                 .then(res => {
                     if (!res.ok) {
-                        console.error(`Assignment requests fetch failed with status: ${res.status}`);
+                        logger.error(`Assignment requests fetch failed with status: ${res.status}`);
                         return res.text().then(text => {
-                            console.error('Error response text:', text);
+                            logger.error('Error response text:', text);
                             throw new Error(`HTTP error! Status: ${res.status}`);
                         });
                     }
                     return res.json();
                 })
                 .then(data => {
-                    console.log('Assignment requests data received:', data);
+                    logger.log('Assignment requests data received:', data);
                     if (data && Array.isArray(data.requests)) {
                         setRequests(data.requests);
                     } else if (data && Array.isArray(data)) {
                         // Handle case where API returns array directly
                         setRequests(data);
                     } else {
-                        console.warn('Unexpected assignment requests data format:', data);
+                        logger.log('Unexpected assignment requests data format:', data);
                         setRequests([]);
                     }
                     setLoading(false);
                 })
                 .catch(err => {
-                    console.error('Error fetching requests:', err);
+                    logger.error('Error fetching requests:', err);
                     setLoading(false);
                     setError('Failed to load assignment requests. Please try again later.');
                 });
