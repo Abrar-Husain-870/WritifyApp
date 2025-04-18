@@ -148,20 +148,18 @@ const WriterProfile: React.FC = () => {
                     return;
                 }
                 
-                // Log the original phone number for debugging
-                console.log('Original phone number:', whatsappNumber);
+                // Process the phone number without logging sensitive data
                 
                 // Clean the phone number to contain only digits
                 whatsappNumber = whatsappNumber.replace(/\D/g, '');
                 
-                // Log the phone number for debugging
-                console.log('Using phone number for WhatsApp:', whatsappNumber);
+                // Format the phone number for WhatsApp
                 
                 // Ensure the number has the country code
                 if (whatsappNumber.length === 10) {
                     // Add country code (for India) if not already present
                     whatsappNumber = '91' + whatsappNumber;
-                    console.log('Added country code to number:', whatsappNumber);
+                    // Added country code to number
                 } else if (whatsappNumber.length < 10) {
                     setSuccess('Request submitted successfully!');
                     alert(`The writer has an invalid phone number (${whatsappNumber}). Please check your assignments page later.`);
@@ -174,9 +172,9 @@ const WriterProfile: React.FC = () => {
                     // If it's more than 10 digits but doesn't start with the country code,
                     // check if adding the country code would make it valid
                     if (whatsappNumber.length === 12 && whatsappNumber.startsWith('91')) {
-                        console.log('Number already has country code');
+                        // Number already has country code
                     } else {
-                        console.log('Number format is unusual:', whatsappNumber);
+                        // Number format is unusual
                     }
                 }
                 

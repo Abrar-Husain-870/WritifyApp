@@ -27,13 +27,13 @@ function storePhoneNumber(text) {
         
         // If the number is already in masked format (******1234), return the original
         if (text.startsWith('******') && text.length > 6) {
-            console.log('Received masked number, returning as is');
+            // Return masked number as is
             return text;
         }
         
         // If the number starts with WPHN-, it's already in our old format
         if (text.startsWith('WPHN-')) {
-            console.log('Received old format number, returning as is');
+            // Return old format number as is
             return text;
         }
         
@@ -50,7 +50,7 @@ function storePhoneNumber(text) {
                 }
                 
                 if (fullNumber) {
-                    console.log('Converting back to full number for better integration');
+                    // Convert back to full number for better integration
                     return fullNumber;
                 }
             }
@@ -67,7 +67,7 @@ function storePhoneNumber(text) {
                 storeFullPhoneNumber(userId, cleanNumber);
             }
             
-            console.log('Storing full phone number for WhatsApp integration');
+            // Store full phone number for WhatsApp integration
             return cleanNumber;
         }
         
@@ -89,7 +89,7 @@ function retrievePhoneNumber(text) {
             if (userId) {
                 const fullNumber = getFullPhoneNumber(userId, text.substring(5));
                 if (fullNumber) {
-                    console.log('Retrieved full phone number from lookup table');
+                    // Return full phone number from lookup table
                     return fullNumber;
                 }
             }
@@ -108,7 +108,6 @@ function retrievePhoneNumber(text) {
                 if (userId) {
                     const fullNumber = getFullPhoneNumberByLast4(userId, last4);
                     if (fullNumber) {
-                        console.log('Retrieved full phone number from lookup table');
                         return fullNumber;
                     }
                 }
@@ -148,7 +147,7 @@ const whatsappLookup = new Map();
 // For security, we'll clear this lookup table periodically
 // This ensures that phone numbers don't stay in memory indefinitely
 setInterval(() => {
-    console.log('Clearing phone number lookup table for security');
+    // Clear phone number lookup table for security
     whatsappLookup.clear();
 }, 24 * 60 * 60 * 1000); // Clear every 24 hours
 
@@ -167,15 +166,15 @@ function createShortHash(text) {
 
 // Get a full phone number by the last 4 digits
 // This is used when we only have the compact reference
-function getFullPhoneNumberByLast4(userId, last4) {
-    if (!userId || !last4) return null;
+function getFullPhoneNumberByLast4(userId, last4Digits) {
+    if (!userId || !last4Digits) return null;
     
     // Get all phone numbers for this user
     const userPhones = whatsappLookup.get(userId) || [];
     
     // Find the one that ends with these 4 digits
     for (const phone of userPhones) {
-        if (phone.endsWith(last4)) {
+        if (phone.endsWith(last4Digits)) {
             return phone;
         }
     }
@@ -194,11 +193,11 @@ function storeFullPhoneNumber(userId, phoneNumber) {
     // Make sure it's a complete number (at least 10 digits)
     if (cleanNumber.length >= 10) {
         // Store the full phone number in memory (not in database)
-        whatsappLookup.set(userId.toString(), cleanNumber);
-        console.log(`Stored complete WhatsApp number for user ${userId}: ${cleanNumber}`);
+        let userPhones = whatsappLookup.get(userId) || [];
+        userPhones.push(cleanNumber);
+        whatsappLookup.set(userId, userPhones);
         return true;
     } else {
-        console.log(`Incomplete phone number for user ${userId}: ${cleanNumber}. Not storing.`);
         return false;
     }
 }
@@ -207,12 +206,9 @@ function storeFullPhoneNumber(userId, phoneNumber) {
 function getFullPhoneNumber(userId, lastFourDigits) {
     if (!userId) return null;
     
-    console.log(`Looking up WhatsApp number for user ${userId}`);
-    
     // Try to get from our lookup table first
-    const storedNumber = whatsappLookup.get(userId.toString());
+    const storedNumber = whatsappLookup.get(userId);
     if (storedNumber) {
-        console.log(`Found stored number for user ${userId}: ${storedNumber}`);
         // Return the original stored number without any modifications
         return storedNumber;
     }
@@ -1108,7 +1104,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         
         // First, check if the client has a phone number in the database
         if (client.whatsapp_number) {
-            console.log(`Client ${client.id} has WhatsApp number: ${client.whatsapp_number}`);
+            // Check if client has a WhatsApp number (without logging the actual number)
             
             // With our new approach, the phone number should be stored directly without masking
             // So we can use it directly for WhatsApp redirection
@@ -1128,11 +1124,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                     // Try to get the full number from the lookup table
                     whatsappRedirect = getFullPhoneNumberByLast4(client.id, last4);
                     
-                    if (whatsappRedirect) {
-                        console.log(`Retrieved full WhatsApp number for redirect: ${whatsappRedirect}`);
-                    } else {
-                        console.log(`Could not find full number for last4: ${last4}`);
-                    }
+                    // No need to log whether we found the number or not
                 } catch (retrieveError) {
                     console.error('Error retrieving phone number:', retrieveError);
                 }
@@ -1150,7 +1142,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                         'UPDATE users SET whatsapp_number = $1 WHERE id = $2',
                         [whatsappRedirect, client.id]
                     );
-                    console.log(`Updated database with full phone number for user ${client.id}`);
+                    // Updated database with full phone number
                     
                     // Also store in the lookup table for redundancy
                     storeFullPhoneNumber(client.id, whatsappRedirect);
@@ -1161,11 +1153,11 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                 // For backward compatibility with old format (WPHN-1234)
                 // Extract the last 4 digits
                 const lastFourDigits = client.whatsapp_number.substring(5);
-                console.log(`Extracted last 4 digits from old format: ${lastFourDigits}`);
+                // Extract last 4 digits from old format
                 
                 // Get the full number using our helper function
                 whatsappRedirect = getFullPhoneNumber(client.id, lastFourDigits);
-                console.log(`Generated WhatsApp redirect number: ${whatsappRedirect}`);
+                // Generated WhatsApp redirect number
                 
                 // If we couldn't get the full number from the lookup table, try to get it from the database
                 if (!whatsappRedirect) {
@@ -1178,7 +1170,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                         
                         if (phoneResult.rows.length > 0 && phoneResult.rows[0].original_phone) {
                             whatsappRedirect = phoneResult.rows[0].original_phone.replace(/\D/g, '');
-                            console.log(`Retrieved original phone from database: ${whatsappRedirect}`);
+                            // Retrieved original phone from database
                             
                             // Store it in the lookup table for future use
                             storeFullPhoneNumber(client.id, whatsappRedirect);
@@ -1194,7 +1186,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             // The frontend will handle this appropriately
             if (!whatsappRedirect && client.whatsapp_number) {
                 whatsappRedirect = client.whatsapp_number;
-                console.log(`Using client number directly as fallback: ${whatsappRedirect}`);
+                // Using client number directly as fallback
             }
         }
         
@@ -1209,10 +1201,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
         });
         
-        console.log('Response sent with WhatsApp data:', {
-            client_whatsapp: client.whatsapp_number || null,
-            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
-        });
+        // Response sent with WhatsApp data (not logging actual numbers)
     } catch (error) {
         console.error('Error accepting assignment request:', error);
         res.status(500).json({ error: 'Server error: ' + error.message });

@@ -248,7 +248,7 @@ const BrowseRequests: React.FC = () => {
             // Find the request that was accepted
             const acceptedRequest = requests.find(req => req.id === requestId);
             console.log('Accepted request:', acceptedRequest);
-            console.log('Client data:', acceptedRequest?.client);
+            // Process client data without logging sensitive information
             
             if (acceptedRequest) {
                 // Create a WhatsApp message with assignment details
@@ -262,8 +262,7 @@ const BrowseRequests: React.FC = () => {
                 // Clean the phone number to contain only digits
                 phoneNumber = phoneNumber.replace(/\D/g, '');
                 
-                // Log the phone number for debugging
-                console.log('Using phone number for WhatsApp:', phoneNumber);
+                // Format the phone number for WhatsApp
                 
                 // Check if WhatsApp number is available
                 if (!phoneNumber) {
@@ -276,10 +275,10 @@ const BrowseRequests: React.FC = () => {
                         if (extractedDigits.length >= 10) {
                             // We have at least 10 digits (a complete phone number), use it
                             phoneNumber = extractedDigits;
-                            console.log('Using complete phone number from client_whatsapp:', phoneNumber);
+                            // Using complete phone number from client_whatsapp
                         } else if (extractedDigits.length >= 4) {
                             // We have some digits, but not enough for a complete number
-                            console.log('Extracted partial digits from client_whatsapp:', extractedDigits);
+                            // Extracted partial digits from client_whatsapp
                             
                             // Show a helpful message
                             const confirmContact = window.confirm(
@@ -307,7 +306,6 @@ const BrowseRequests: React.FC = () => {
                 if (phoneNumber.length === 10) {
                     // Add country code (for India) if not already present
                     phoneNumber = '91' + phoneNumber;
-                    console.log('Added country code to number:', phoneNumber);
                 } else if (phoneNumber.length < 10) {
                     alert('The client has an invalid phone number. Please check your assignments page for contact details.');
                     navigate('/my-assignments');
