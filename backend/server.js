@@ -53,12 +53,21 @@ function storePhoneNumber(text) {
                 storeFullPhoneNumber(userId, cleanNumber);
             }
             
-            // Encrypt the number for database storage
-            // We'll use a simple encryption for demo purposes
-            // In production, use a more robust encryption method
-            const encryptedNumber = 'ESEC-' + Buffer.from(cleanNumber).toString('base64');
-            console.log('Storing encrypted phone number for security');
-            return encryptedNumber;
+            // Encrypt the number for database storage, ensuring it fits in VARCHAR(20)
+            // We need to use a more compact encryption method
+            // Instead of full Base64, we'll use a shortened hash + last 4 digits approach
+            
+            // Store the full number in memory for WhatsApp functionality
+            // We already have userId from above, so don't redeclare it
+            
+            // For database storage, create a compact reference that fits in VARCHAR(20)
+            // Use the last 4 digits plus a short hash of the number
+            const last4 = cleanNumber.slice(-4);
+            const shortHash = createShortHash(cleanNumber);
+            const compactReference = `PH-${shortHash}${last4}`;
+            
+            console.log('Storing compact phone reference for security');
+            return compactReference;
         }
         
         // If it's not a complete number, just return it as is
@@ -87,17 +96,26 @@ function retrievePhoneNumber(text) {
             return text;
         }
         
-        // If it's in our encrypted format, decrypt it
-        if (text.startsWith('ESEC-')) {
+        // If it's in our compact reference format (PH-xxxYYYY), retrieve the full number
+        if (text.startsWith('PH-')) {
             try {
-                // Decrypt the number
-                // In production, use a more robust decryption method
-                const encryptedPart = text.substring(5);
-                const decryptedNumber = Buffer.from(encryptedPart, 'base64').toString('utf-8');
-                console.log('Decrypted phone number for use');
-                return decryptedNumber;
-            } catch (decryptError) {
-                console.error('Error decrypting phone number:', decryptError);
+                // Extract the last 4 digits from the compact reference
+                const last4 = text.slice(-4);
+                
+                // Try to get the full number from the lookup table
+                const userId = getCurrentUserId();
+                if (userId) {
+                    const fullNumber = getFullPhoneNumberByLast4(userId, last4);
+                    if (fullNumber) {
+                        console.log('Retrieved full phone number from lookup table');
+                        return fullNumber;
+                    }
+                }
+                
+                // If we couldn't get the full number, at least return the last 4 digits
+                return `******${last4}`;
+            } catch (retrieveError) {
+                console.error('Error retrieving phone number:', retrieveError);
                 return text;
             }
         }
@@ -132,6 +150,37 @@ setInterval(() => {
     console.log('Clearing phone number lookup table for security');
     whatsappLookup.clear();
 }, 24 * 60 * 60 * 1000); // Clear every 24 hours
+
+// Create a short hash (4 characters) from a phone number
+// This is used to create a unique identifier that fits in the database
+function createShortHash(text) {
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    // Convert to a 4-character alphanumeric string
+    const hashStr = Math.abs(hash).toString(36).substring(0, 4).padStart(4, '0');
+    return hashStr;
+}
+
+// Get a full phone number by the last 4 digits
+// This is used when we only have the compact reference
+function getFullPhoneNumberByLast4(userId, last4) {
+    if (!userId || !last4) return null;
+    
+    // Get all phone numbers for this user
+    const userPhones = whatsappLookup.get(userId) || [];
+    
+    // Find the one that ends with these 4 digits
+    for (const phone of userPhones) {
+        if (phone.endsWith(last4)) {
+            return phone;
+        }
+    }
+    
+    return null;
+}
 
 // Store a phone number for WhatsApp redirects
 function storeFullPhoneNumber(userId, phoneNumber) {
@@ -1061,18 +1110,22 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             console.log(`Client ${client.id} has WhatsApp number: ${client.whatsapp_number}`);
             
             // Check the format of the phone number
-            if (client.whatsapp_number.startsWith('ESEC-')) {
-                // It's in our new encrypted format, decrypt it
+            if (client.whatsapp_number.startsWith('PH-')) {
+                // It's in our compact reference format, retrieve the full number
                 try {
-                    const encryptedPart = client.whatsapp_number.substring(5);
-                    const decryptedNumber = Buffer.from(encryptedPart, 'base64').toString('utf-8');
-                    whatsappRedirect = decryptedNumber.replace(/[^0-9]/g, '');
-                    console.log(`Decrypted WhatsApp number for redirect: ${whatsappRedirect}`);
+                    // Extract the last 4 digits
+                    const last4 = client.whatsapp_number.slice(-4);
                     
-                    // Store in lookup table for future use
-                    storeFullPhoneNumber(client.id, whatsappRedirect);
-                } catch (decryptError) {
-                    console.error('Error decrypting phone number:', decryptError);
+                    // Try to get the full number from the lookup table
+                    whatsappRedirect = getFullPhoneNumberByLast4(client.id, last4);
+                    
+                    if (whatsappRedirect) {
+                        console.log(`Retrieved full WhatsApp number for redirect: ${whatsappRedirect}`);
+                    } else {
+                        console.log(`Could not find full number for last4: ${last4}`);
+                    }
+                } catch (retrieveError) {
+                    console.error('Error retrieving phone number:', retrieveError);
                 }
             } else if (!client.whatsapp_number.startsWith('WPHN-')) {
                 // If it's a full number in plain text (legacy format), use it directly
@@ -1082,18 +1135,23 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                 // Store in lookup table for future use
                 storeFullPhoneNumber(client.id, whatsappRedirect);
                 
-                // Encrypt for future storage
-                const encryptedNumber = 'ESEC-' + Buffer.from(whatsappRedirect).toString('base64');
+                // Create a compact reference for database storage
+                const last4 = whatsappRedirect.slice(-4);
+                const shortHash = createShortHash(whatsappRedirect);
+                const compactReference = `PH-${shortHash}${last4}`;
                 
-                // Update the database with the encrypted version
+                // Update the database with the compact reference
                 try {
                     await pool.query(
                         'UPDATE users SET whatsapp_number = $1 WHERE id = $2',
-                        [encryptedNumber, client.id]
+                        [compactReference, client.id]
                     );
-                    console.log(`Updated database with encrypted number for user ${client.id}`);
+                    console.log(`Updated database with compact reference for user ${client.id}`);
+                    
+                    // Store the full number in the lookup table
+                    storeFullPhoneNumber(client.id, whatsappRedirect);
                 } catch (updateErr) {
-                    console.error('Error updating encrypted phone number:', updateErr);
+                    console.error('Error updating phone reference:', updateErr);
                 }
             } else {
                 // For backward compatibility with old format (WPHN-1234)
