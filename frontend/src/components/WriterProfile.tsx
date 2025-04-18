@@ -6,12 +6,15 @@ import { API } from '../utils/api';
 interface Writer {
     id: number;
     name: string;
-    rating: number | string;
-    total_ratings: number;
-    writer_status: 'active' | 'busy' | 'inactive';
+    email: string;
+    profile_picture: string;
     university_stream: string;
     whatsapp_number: string;
-    sample_work_image: string;
+    whatsapp_redirect?: string;
+    writer_status: 'active' | 'busy' | 'inactive';
+    rating: number | string;
+    total_ratings: number;
+    sample_work_image?: string;
 }
 
 interface AssignmentRequest {
@@ -130,12 +133,11 @@ const WriterProfile: React.FC = () => {
             });
 
             if (response.ok) {
-                let whatsappNumber = writer?.whatsapp_number || '';
+                // Use the whatsapp_redirect property if available, otherwise fall back to the displayed number
+                let whatsappNumber = writer?.whatsapp_redirect || writer?.whatsapp_number || '';
                 
-                // Check if WhatsApp number is empty or just contains the country code
-                whatsappNumber = whatsappNumber.replace(/\D/g, '');
-                
-                if (!whatsappNumber || whatsappNumber === '91' || whatsappNumber === '') {
+                // Check if WhatsApp number is empty or just masked without a redirect number
+                if (!whatsappNumber || whatsappNumber.startsWith('******')) {
                     setSuccess('Request submitted successfully!');
                     alert('The writer has not added their WhatsApp number. Please check your assignments page later.');
                     
@@ -145,10 +147,12 @@ const WriterProfile: React.FC = () => {
                     return;
                 }
                 
-                if (!whatsappNumber.startsWith('+')) {
-                    if (!whatsappNumber.startsWith('91')) {
-                        whatsappNumber = '91' + whatsappNumber;
-                    }
+                // Clean the number to contain only digits
+                whatsappNumber = whatsappNumber.replace(/\D/g, '');
+                
+                // Ensure it has the country code
+                if (!whatsappNumber.startsWith('91')) {
+                    whatsappNumber = '91' + whatsappNumber;
                 }
                 
                 const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}. Let's discuss the details.`);

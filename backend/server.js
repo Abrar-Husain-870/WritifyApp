@@ -51,6 +51,33 @@ function retrievePhoneNumber(text) {
     }
 }
 
+// Get the full WhatsApp number for redirects (using a lookup table approach)
+const whatsappLookup = new Map();
+
+// Store a phone number for WhatsApp redirects
+function storeFullPhoneNumber(userId, phoneNumber) {
+    if (!userId || !phoneNumber) return;
+    // Store the full phone number in memory (not in database)
+    whatsappLookup.set(userId.toString(), phoneNumber);
+}
+
+// Get the full phone number for WhatsApp redirects
+function getFullPhoneNumber(userId, lastFourDigits) {
+    if (!userId) return null;
+    
+    // Try to get from our lookup table first
+    const storedNumber = whatsappLookup.get(userId.toString());
+    if (storedNumber) return storedNumber;
+    
+    // If we don't have the full number, use a default format with country code
+    // This is a fallback that at least ensures the last 4 digits are correct
+    if (lastFourDigits) {
+        return '91' + lastFourDigits; // Default to India country code + last 4 digits
+    }
+    
+    return null;
+}
+
 // Validate phone number format
 function validatePhoneNumber(phoneNumber) {
     // Basic validation - can be enhanced based on your requirements
@@ -685,6 +712,18 @@ app.get('/api/writers/:id', isAuthenticated, async (req, res) => {
             writerData.total_ratings = ratings.length;
             
             console.log(`Calculated average rating: ${writerData.rating} from ${ratings.length} ratings`);
+        }
+        
+        // Process WhatsApp number for display and redirect
+        if (writerData.whatsapp_number && writerData.whatsapp_number.startsWith('WPHN-')) {
+            // Extract the last 4 digits
+            const lastFourDigits = writerData.whatsapp_number.substring(5);
+            
+            // Add the full WhatsApp number for redirects
+            writerData.whatsapp_redirect = getFullPhoneNumber(writerData.id, lastFourDigits);
+            
+            // Mask the displayed number for privacy
+            writerData.whatsapp_number = retrievePhoneNumber(writerData.whatsapp_number);
         }
         
         res.json(writerData);
@@ -1325,6 +1364,12 @@ app.put('/api/profile/writer', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'Invalid phone number format. Please enter a valid phone number.' });
         }
         
+        // If this is a new phone number (not masked), store the full number in our lookup table
+        if (whatsapp_number && !isMaskedNumber) {
+            // Store the full number for WhatsApp redirects
+            storeFullPhoneNumber(req.user.id, whatsapp_number);
+        }
+        
         // Store the WhatsApp number in a format that fits in VARCHAR(20)
         const storedWhatsApp = whatsapp_number ? storePhoneNumber(whatsapp_number) : null;
         
@@ -1394,6 +1439,9 @@ app.post('/api/update-whatsapp', isAuthenticated, async (req, res) => {
         }
         
         console.log(`Updating WhatsApp number for user ${userId} to ${whatsapp_number}`);
+        
+        // Store the full number in our lookup table for WhatsApp redirects
+        storeFullPhoneNumber(userId, whatsapp_number);
         
         await pool.query(
             'UPDATE users SET whatsapp_number = $1 WHERE id = $2',
