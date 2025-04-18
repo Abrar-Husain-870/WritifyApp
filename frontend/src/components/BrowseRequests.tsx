@@ -273,7 +273,24 @@ const BrowseRequests: React.FC = () => {
                         if (extractedDigits.length >= 4) {
                             // We have at least the last 4 digits, let's try to use them
                             console.log('Extracted digits from client_whatsapp:', extractedDigits);
-                            phoneNumber = extractedDigits;
+                            
+                            // If we have at least 10 digits (a complete phone number), use it
+                            if (extractedDigits.length >= 10) {
+                                phoneNumber = extractedDigits;
+                                console.log('Using complete phone number:', phoneNumber);
+                            } else {
+                                // We only have partial digits, show a more helpful message
+                                const confirmContact = window.confirm(
+                                    `Only partial phone number is available (ending in: ${extractedDigits}). \n\n` +
+                                    `Please check your assignments page for more contact details. \n\n` +
+                                    `Would you like to go to your assignments page now?`
+                                );
+                                
+                                if (confirmContact) {
+                                    navigate('/my-assignments');
+                                }
+                                return;
+                            }
                         }
                     }
                     
