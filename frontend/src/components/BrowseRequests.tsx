@@ -255,8 +255,9 @@ const BrowseRequests: React.FC = () => {
                 const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
-                // Use the redirect number from the backend - this should be the original number
-                let phoneNumber = data.client_whatsapp_redirect || '';
+                // First try to use the redirect number, then fall back to the regular number
+                // With our updated backend, both should now contain the full number
+                let phoneNumber = data.client_whatsapp_redirect || data.client_whatsapp || '';
                 
                 // Clean the phone number to contain only digits
                 phoneNumber = phoneNumber.replace(/\D/g, '');
@@ -268,29 +269,29 @@ const BrowseRequests: React.FC = () => {
                 if (!phoneNumber) {
                     // If the redirect number is not available, try to get it from the client_whatsapp field
                     // and extract digits from it if possible
+                    // With our updated backend, we should have the full phone number
+                    // But as a fallback, try to extract any digits from the client_whatsapp field
                     if (data.client_whatsapp) {
                         const extractedDigits = data.client_whatsapp.replace(/\D/g, '');
-                        if (extractedDigits.length >= 4) {
-                            // We have at least the last 4 digits, let's try to use them
-                            console.log('Extracted digits from client_whatsapp:', extractedDigits);
+                        if (extractedDigits.length >= 10) {
+                            // We have at least 10 digits (a complete phone number), use it
+                            phoneNumber = extractedDigits;
+                            console.log('Using complete phone number from client_whatsapp:', phoneNumber);
+                        } else if (extractedDigits.length >= 4) {
+                            // We have some digits, but not enough for a complete number
+                            console.log('Extracted partial digits from client_whatsapp:', extractedDigits);
                             
-                            // If we have at least 10 digits (a complete phone number), use it
-                            if (extractedDigits.length >= 10) {
-                                phoneNumber = extractedDigits;
-                                console.log('Using complete phone number:', phoneNumber);
-                            } else {
-                                // We only have partial digits, show a more helpful message
-                                const confirmContact = window.confirm(
-                                    `Only partial phone number is available (ending in: ${extractedDigits}). \n\n` +
-                                    `Please check your assignments page for more contact details. \n\n` +
-                                    `Would you like to go to your assignments page now?`
-                                );
-                                
-                                if (confirmContact) {
-                                    navigate('/my-assignments');
-                                }
-                                return;
+                            // Show a helpful message
+                            const confirmContact = window.confirm(
+                                `Only partial phone number is available (ending in: ${extractedDigits}). \n\n` +
+                                `Please check your assignments page for more contact details. \n\n` +
+                                `Would you like to go to your assignments page now?`
+                            );
+                            
+                            if (confirmContact) {
+                                navigate('/my-assignments');
                             }
+                            return;
                         }
                     }
                     

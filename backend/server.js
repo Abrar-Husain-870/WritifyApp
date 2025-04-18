@@ -18,36 +18,70 @@ let rawKey = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-ch
 const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(rawKey)).digest('base64').substring(0, 32);
 const IV_LENGTH = 16; // For AES, this is always 16
 
-// Store sensitive data like phone numbers
-// Instead of encrypting in the database (which makes the value too long for VARCHAR(20)),
-// we'll store a reference ID and keep the actual data in memory or environment variables
+// Store phone numbers without masking
+// We're now storing the complete phone number for better WhatsApp integration
 function storePhoneNumber(text) {
     if (!text) return text;
     try {
-        // If the number is already in masked format (******1234), extract the last 4 digits
+        // Clean the phone number to contain only digits and the plus sign
+        let cleanNumber = text.replace(/[^0-9+]/g, '');
+        
+        // If the number is already in masked format (******1234), return the original
         if (text.startsWith('******') && text.length > 6) {
-            return 'WPHN-' + text.slice(-4);
+            console.log('Received masked number, returning as is');
+            return text;
         }
         
-        // For WhatsApp numbers, just store the last 4 digits with a prefix
-        // This is secure enough for a university app while fitting in VARCHAR(20)
-        return 'WPHN-' + text.slice(-4);
+        // If the number starts with WPHN-, it's already in our old format
+        if (text.startsWith('WPHN-')) {
+            console.log('Received old format number, returning as is');
+            return text;
+        }
+        
+        // Store the full phone number for better WhatsApp integration
+        console.log('Storing full phone number for WhatsApp integration');
+        return cleanNumber;
     } catch (error) {
         console.error('Phone storage error:', error);
         return text; // Return original text if storage fails
     }
 }
 
-// Retrieve phone number from storage format
+// Retrieve phone number without masking
 function retrievePhoneNumber(text) {
-    if (!text || !text.startsWith('WPHN-')) return text;
+    if (!text) return text;
     try {
-        // For our university app, we'll just indicate that this is a partially hidden number
-        // In a real app, you would retrieve the full number from a secure storage
-        return '******' + text.substring(5); // Returns ******1234 format
+        // If it's in our old WPHN- format, try to get the full number
+        if (text.startsWith('WPHN-')) {
+            const userId = getCurrentUserId();
+            if (userId) {
+                const fullNumber = getFullPhoneNumber(userId, text.substring(5));
+                if (fullNumber) {
+                    console.log('Retrieved full phone number from lookup table');
+                    return fullNumber;
+                }
+            }
+            // If we couldn't get the full number, return the original
+            return text;
+        }
+        
+        // For all other formats, return as is (should be the full number)
+        return text;
     } catch (error) {
         console.error('Phone retrieval error:', error);
         return text; // Return original text if retrieval fails
+    }
+}
+
+// Helper function to get the current user ID from the request
+function getCurrentUserId() {
+    try {
+        // This is a simplified version - in a real implementation, you would
+        // get this from the current request context
+        return null;
+    } catch (error) {
+        console.error('Error getting current user ID:', error);
+        return null;
     }
 }
 
@@ -981,10 +1015,17 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         if (client.whatsapp_number) {
             console.log(`Client ${client.id} has WhatsApp number: ${client.whatsapp_number}`);
             
-            if (client.whatsapp_number.startsWith('WPHN-')) {
+            // With our new approach, the phone number should be stored directly without masking
+            // So we can use it directly for WhatsApp redirection
+            if (!client.whatsapp_number.startsWith('WPHN-')) {
+                // If it's already a full number (our new format), use it directly
+                whatsappRedirect = client.whatsapp_number.replace(/[^0-9]/g, '');
+                console.log(`Using direct WhatsApp number: ${whatsappRedirect}`);
+            } else {
+                // For backward compatibility with old format (WPHN-1234)
                 // Extract the last 4 digits
                 const lastFourDigits = client.whatsapp_number.substring(5);
-                console.log(`Extracted last 4 digits: ${lastFourDigits}`);
+                console.log(`Extracted last 4 digits from old format: ${lastFourDigits}`);
                 
                 // Get the full number using our helper function
                 whatsappRedirect = getFullPhoneNumber(client.id, lastFourDigits);
@@ -1010,24 +1051,31 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                         console.error('Error retrieving original phone number:', err);
                     }
                 }
-            } else if (client.whatsapp_number.match(/^\+?[0-9]+$/)) {
-                // If the number is already in a valid format (contains only digits and possibly a + sign)
-                whatsappRedirect = client.whatsapp_number.replace(/\D/g, '');
-                console.log(`Using direct WhatsApp number: ${whatsappRedirect}`);
-                
-                // Store it in the lookup table for future use
-                storeFullPhoneNumber(client.id, whatsappRedirect);
+            }
+            
+            // If we still don't have a WhatsApp redirect number but have a client number,
+            // use the client number directly (even if it's in WPHN format)
+            // The frontend will handle this appropriately
+            if (!whatsappRedirect && client.whatsapp_number) {
+                whatsappRedirect = client.whatsapp_number;
+                console.log(`Using client number directly as fallback: ${whatsappRedirect}`);
             }
         }
         
         // Return success with client WhatsApp number for direct contact
+        // With our new approach, we're sending the full phone number for better WhatsApp integration
         res.json({
             success: true,
             message: 'Assignment assigned successfully',
             client_id: client.id,
             client_name: client.name,
-            client_whatsapp: client.whatsapp_number ? retrievePhoneNumber(client.whatsapp_number) : null,
-            client_whatsapp_redirect: whatsappRedirect
+            client_whatsapp: client.whatsapp_number || null,
+            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
+        });
+        
+        console.log('Response sent with WhatsApp data:', {
+            client_whatsapp: client.whatsapp_number || null,
+            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
         });
     } catch (error) {
         console.error('Error accepting assignment request:', error);
