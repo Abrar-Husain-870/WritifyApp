@@ -24,6 +24,11 @@ const IV_LENGTH = 16; // For AES, this is always 16
 function storePhoneNumber(text) {
     if (!text) return text;
     try {
+        // If the number is already in masked format (******1234), extract the last 4 digits
+        if (text.startsWith('******') && text.length > 6) {
+            return 'WPHN-' + text.slice(-4);
+        }
+        
         // For WhatsApp numbers, just store the last 4 digits with a prefix
         // This is secure enough for a university app while fitting in VARCHAR(20)
         return 'WPHN-' + text.slice(-4);
@@ -1312,8 +1317,11 @@ app.put('/api/profile/writer', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'Invalid writer status' });
         }
         
-        // Validate phone number format if provided
-        if (whatsapp_number && !validatePhoneNumber(whatsapp_number)) {
+        // Skip validation if the number is already in masked format (from a previous fetch)
+        const isMaskedNumber = whatsapp_number && whatsapp_number.startsWith('******');
+        
+        // Only validate phone numbers that aren't already masked
+        if (whatsapp_number && !isMaskedNumber && !validatePhoneNumber(whatsapp_number)) {
             return res.status(400).json({ error: 'Invalid phone number format. Please enter a valid phone number.' });
         }
         
