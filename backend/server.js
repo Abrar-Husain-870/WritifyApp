@@ -79,13 +79,10 @@ function getFullPhoneNumber(userId, lastFourDigits) {
         }
     }
     
-    // If we don't have the full number in our lookup table,
-    // use a standard format with the last 4 digits
-    // This is the same approach that's working in the Find Writer feature
+    // For this university app, we'll just return the last 4 digits with the country code
+    // The frontend will handle showing an appropriate message if the number is incomplete
     if (lastFourDigits) {
-        // For Indian numbers, we'll use a standard format with the country code
-        // This matches what's working in the Find Writer feature
-        return '91' + lastFourDigits.padStart(10, '9'); // Ensure it's a valid 10-digit number
+        return '91' + lastFourDigits; // Just return the country code + last 4 digits
     }
     
     return null;
@@ -934,10 +931,23 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         
         // Get the full WhatsApp number for redirect if available
         let whatsappRedirect = null;
-        if (client.whatsapp_number && client.whatsapp_number.startsWith('WPHN-')) {
-            // Extract the last 4 digits
-            const lastFourDigits = client.whatsapp_number.substring(5);
-            whatsappRedirect = getFullPhoneNumber(client.id, lastFourDigits);
+        
+        // Check if we have the full phone number in our lookup table
+        if (client.id) {
+            const storedNumber = whatsappLookup.get(client.id.toString());
+            if (storedNumber) {
+                // Clean the stored number to contain only digits
+                whatsappRedirect = storedNumber.replace(/\D/g, '');
+                if (!whatsappRedirect.startsWith('91')) {
+                    whatsappRedirect = '91' + whatsappRedirect;
+                }
+                console.log(`Using stored WhatsApp number for client ${client.id}: ${whatsappRedirect}`);
+            } else if (client.whatsapp_number && client.whatsapp_number.startsWith('WPHN-')) {
+                // If we don't have the full number, just use the last 4 digits
+                const lastFourDigits = client.whatsapp_number.substring(5);
+                whatsappRedirect = '91' + lastFourDigits;
+                console.log(`Using last 4 digits for client ${client.id}: ${whatsappRedirect}`);
+            }
         }
         
         // Return success with client WhatsApp number for direct contact

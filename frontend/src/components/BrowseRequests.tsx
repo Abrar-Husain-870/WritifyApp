@@ -257,14 +257,13 @@ const BrowseRequests: React.FC = () => {
                 
                 // Get the client's WhatsApp number from the API response
                 // Use the redirect number if available, otherwise fall back to the displayed number
-                let phoneNumber = data.client_whatsapp_redirect || data.client_whatsapp || '';
+                let phoneNumber = data.client_whatsapp_redirect || '';
                 
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', phoneNumber);
                 
-                // Check if WhatsApp number is empty or just masked without a redirect number
-                // This matches the check in WriterProfile.tsx which is working correctly
-                if (phoneNumber === '' || (phoneNumber.startsWith('******') && !data.client_whatsapp_redirect)) {
+                // Check if WhatsApp number is empty
+                if (!phoneNumber) {
                     alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
                     navigate('/my-assignments');
                     return;
@@ -272,6 +271,13 @@ const BrowseRequests: React.FC = () => {
                 
                 // Clean the phone number - remove any non-numeric characters
                 phoneNumber = phoneNumber.replace(/\D/g, '');
+                
+                // Check if we have a valid number (at least 10 digits including country code)
+                if (phoneNumber.length < 10) {
+                    alert('The client\'s WhatsApp number is incomplete. Please check your assignments page for contact details.');
+                    navigate('/my-assignments');
+                    return;
+                }
                 
                 // Add country code if needed (for India)
                 if (!phoneNumber.startsWith('91')) {
