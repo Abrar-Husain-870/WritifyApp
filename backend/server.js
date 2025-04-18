@@ -989,6 +989,34 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                 // Get the full number using our helper function
                 whatsappRedirect = getFullPhoneNumber(client.id, lastFourDigits);
                 console.log(`Generated WhatsApp redirect number: ${whatsappRedirect}`);
+                
+                // If we couldn't get the full number from the lookup table, try to get it from the database
+                if (!whatsappRedirect) {
+                    // Query the database to get the original phone number
+                    try {
+                        const phoneResult = await pool.query(
+                            'SELECT original_phone FROM phone_numbers WHERE user_id = $1',
+                            [client.id]
+                        );
+                        
+                        if (phoneResult.rows.length > 0 && phoneResult.rows[0].original_phone) {
+                            whatsappRedirect = phoneResult.rows[0].original_phone.replace(/\D/g, '');
+                            console.log(`Retrieved original phone from database: ${whatsappRedirect}`);
+                            
+                            // Store it in the lookup table for future use
+                            storeFullPhoneNumber(client.id, whatsappRedirect);
+                        }
+                    } catch (err) {
+                        console.error('Error retrieving original phone number:', err);
+                    }
+                }
+            } else if (client.whatsapp_number.match(/^\+?[0-9]+$/)) {
+                // If the number is already in a valid format (contains only digits and possibly a + sign)
+                whatsappRedirect = client.whatsapp_number.replace(/\D/g, '');
+                console.log(`Using direct WhatsApp number: ${whatsappRedirect}`);
+                
+                // Store it in the lookup table for future use
+                storeFullPhoneNumber(client.id, whatsappRedirect);
             }
         }
         

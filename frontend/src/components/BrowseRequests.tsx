@@ -255,7 +255,7 @@ const BrowseRequests: React.FC = () => {
                 const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
-                // Use only the redirect number from the backend - this should be the original number
+                // Use the redirect number from the backend - this should be the original number
                 let phoneNumber = data.client_whatsapp_redirect || '';
                 
                 // Clean the phone number to contain only digits
@@ -266,9 +266,23 @@ const BrowseRequests: React.FC = () => {
                 
                 // Check if WhatsApp number is available
                 if (!phoneNumber) {
-                    alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
-                    navigate('/my-assignments');
-                    return;
+                    // If the redirect number is not available, try to get it from the client_whatsapp field
+                    // and extract digits from it if possible
+                    if (data.client_whatsapp) {
+                        const extractedDigits = data.client_whatsapp.replace(/\D/g, '');
+                        if (extractedDigits.length >= 4) {
+                            // We have at least the last 4 digits, let's try to use them
+                            console.log('Extracted digits from client_whatsapp:', extractedDigits);
+                            phoneNumber = extractedDigits;
+                        }
+                    }
+                    
+                    // If we still don't have a phone number, show an alert
+                    if (!phoneNumber) {
+                        alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
+                        navigate('/my-assignments');
+                        return;
+                    }
                 }
                 
                 // Ensure the number has the country code
