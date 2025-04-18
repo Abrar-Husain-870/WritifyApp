@@ -239,13 +239,18 @@ const BrowseRequests: React.FC = () => {
                 const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
-                let phoneNumber = data.client_whatsapp || '';
+                // Use the redirect number if available, otherwise fall back to the displayed number
+                let phoneNumber = data.client_whatsapp_redirect || data.client_whatsapp || '';
                 
                 // Clean the phone number - remove any non-numeric characters
                 phoneNumber = phoneNumber.replace(/\D/g, '');
                 
-                // Ensure it starts with country code (for India, add 91 if not present)
-                if (phoneNumber && !phoneNumber.startsWith('91') && phoneNumber.length === 10) {
+                // Check if we have a valid number (not just the last 4 digits)
+                if (phoneNumber.length <= 4) {
+                    // If we only have the last 4 digits, add the country code
+                    phoneNumber = '91' + phoneNumber;
+                } else if (!phoneNumber.startsWith('91')) {
+                    // Ensure it starts with country code (for India)
                     phoneNumber = '91' + phoneNumber;
                 }
                 

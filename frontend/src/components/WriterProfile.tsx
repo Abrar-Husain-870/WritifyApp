@@ -151,8 +151,12 @@ const WriterProfile: React.FC = () => {
                 // Clean the number to contain only digits
                 whatsappNumber = whatsappNumber.replace(/\D/g, '');
                 
-                // Ensure it has the country code
-                if (!whatsappNumber.startsWith('91')) {
+                // Check if we have a valid number or just the last 4 digits
+                if (whatsappNumber.length <= 4) {
+                    // If we only have the last 4 digits, add the country code
+                    whatsappNumber = '91' + whatsappNumber;
+                } else if (!whatsappNumber.startsWith('91')) {
+                    // Ensure it starts with country code (for India)
                     whatsappNumber = '91' + whatsappNumber;
                 }
                 

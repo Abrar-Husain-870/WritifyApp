@@ -860,61 +860,80 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
 });
 
 app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res) => {
-    const requestId = req.params.id;
-    
     try {
-        // Start transaction
-        await pool.query('BEGIN');
+        const requestId = req.params.id;
+        const writerId = req.user.id;
         
-        // First, check if this is the user's own request
-        const checkOwnRequest = await pool.query(`
-            SELECT client_id FROM assignment_requests
-            WHERE id = $1
-        `, [requestId]);
+        // Validate that the writer is active or busy
+        const writerResult = await pool.query(
+            'SELECT writer_status FROM users WHERE id = $1',
+            [writerId]
+        );
         
-        if (checkOwnRequest.rows.length > 0 && checkOwnRequest.rows[0].client_id === req.user.id) {
-            await pool.query('ROLLBACK');
-            return res.status(403).json({ error: 'You cannot accept your own assignment request' });
+        if (writerResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Writer not found' });
         }
         
-        // Update request status
-        const requestResult = await pool.query(`
-            UPDATE assignment_requests 
-            SET status = 'assigned'
-            WHERE id = $1 AND status = 'open'
-            RETURNING *
-        `, [requestId]);
+        const writerStatus = writerResult.rows[0].writer_status;
+        if (writerStatus !== 'active' && writerStatus !== 'busy') {
+            return res.status(400).json({ 
+                error: 'You must set your writer status to Active or Busy before accepting assignments' 
+            });
+        }
+
+        // Check if the request exists and is still open
+        const requestResult = await pool.query(
+            'SELECT * FROM assignment_requests WHERE id = $1 AND status = \'open\'',
+            [requestId]
+        );
         
         if (requestResult.rows.length === 0) {
-            await pool.query('ROLLBACK');
-            return res.status(404).json({ error: 'Request not found or already assigned' });
+            return res.status(404).json({ error: 'Assignment request not found or already accepted' });
         }
         
-        // Create assignment
-        await pool.query(`
-            INSERT INTO assignments (request_id, writer_id, client_id, status)
-            VALUES ($1, $2, $3, 'in_progress')
-        `, [requestId, req.user.id, requestResult.rows[0].client_id]);
+        const request = requestResult.rows[0];
         
-        // Update writer status
-        await pool.query(`
-            UPDATE users 
-            SET writer_status = 'busy'
-            WHERE id = $1
-        `, [req.user.id]);
+        // Get client information including WhatsApp number
+        const clientResult = await pool.query(
+            'SELECT id, name, whatsapp_number FROM users WHERE id = $1',
+            [request.client_id]
+        );
         
-        await pool.query('COMMIT');
+        if (clientResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Client not found' });
+        }
         
-        // Get client's WhatsApp number
-        const clientResult = await pool.query(`
-            SELECT whatsapp_number 
-            FROM users 
-            WHERE id = $1
-        `, [requestResult.rows[0].client_id]);
+        const client = clientResult.rows[0];
         
+        // Create a new assignment
+        await pool.query(
+            `INSERT INTO assignments (request_id, writer_id, status, created_at)
+             VALUES ($1, $2, 'in_progress', NOW())`,
+            [requestId, writerId]
+        );
+        
+        // Update the request status
+        await pool.query(
+            'UPDATE assignment_requests SET status = \'accepted\' WHERE id = $1',
+            [requestId]
+        );
+        
+        // Get the full WhatsApp number for redirect if available
+        let whatsappRedirect = null;
+        if (client.whatsapp_number && client.whatsapp_number.startsWith('WPHN-')) {
+            // Extract the last 4 digits
+            const lastFourDigits = client.whatsapp_number.substring(5);
+            whatsappRedirect = getFullPhoneNumber(client.id, lastFourDigits);
+        }
+        
+        // Return success with client WhatsApp number for direct contact
         res.json({
-            ...requestResult.rows[0],
-            client_whatsapp: clientResult.rows[0].whatsapp_number
+            success: true,
+            message: 'Assignment accepted successfully',
+            client_id: client.id,
+            client_name: client.name,
+            client_whatsapp: client.whatsapp_number ? retrievePhoneNumber(client.whatsapp_number) : null,
+            client_whatsapp_redirect: whatsappRedirect
         });
     } catch (error) {
         await pool.query('ROLLBACK');
