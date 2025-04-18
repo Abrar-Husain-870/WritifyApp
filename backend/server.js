@@ -82,14 +82,10 @@ function getFullPhoneNumber(userId, lastFourDigits) {
         }
     }
     
-    // If we don't have a stored number, create a complete number with the last 4 digits
-    // This ensures WhatsApp redirection works even with partial data
+    // If we don't have a stored number, just return the last 4 digits
+    // The frontend will handle validation
     if (lastFourDigits) {
-        // Create a valid 10-digit number with the last 4 digits
-        // For university students in India, we'll use a standard format
-        const fullNumber = '91987654' + lastFourDigits.slice(-4).padStart(4, '0');
-        console.log(`Created full number for user ${userId} using last digits: ${fullNumber}`);
-        return fullNumber;
+        return lastFourDigits;
     }
     
     return null;
@@ -952,13 +948,6 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
                 whatsappRedirect = getFullPhoneNumber(client.id, lastFourDigits);
                 console.log(`Generated WhatsApp redirect number: ${whatsappRedirect}`);
             }
-        }
-        
-        // If we still don't have a redirect number, create a valid one for testing
-        // This ensures the feature works even during development/testing
-        if (!whatsappRedirect) {
-            whatsappRedirect = '919876543210'; // Default test number
-            console.log(`Using default test number for client ${client.id}: ${whatsappRedirect}`);
         }
         
         // Return success with client WhatsApp number for direct contact
