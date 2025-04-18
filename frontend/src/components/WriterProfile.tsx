@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from '../utils/api';
 import Header from './Header';
+import { debugLog, errorLog } from '../utils/logUtil';
 
 interface Writer {
     id: number;
@@ -51,7 +52,7 @@ const WriterProfile: React.FC = () => {
         })
         .then(res => res.json())
         .then(data => {
-            console.log('Writer data received:', data);
+            debugLog('Writer data received:', data);
             // Ensure rating is a number for proper display
             if (data && typeof data.rating === 'string') {
                 data.rating = parseFloat(data.rating) || 0;
@@ -60,7 +61,7 @@ const WriterProfile: React.FC = () => {
             setLoading(false);
         })
         .catch(err => {
-            console.error('Error fetching writer:', err);
+            errorLog('Error fetching writer:', err);
             setLoading(false);
         });
     }, [id]);
@@ -195,7 +196,7 @@ const WriterProfile: React.FC = () => {
                 console.error('Error response:', errorData);
             }
         } catch (error) {
-            console.error('Error submitting request:', error);
+            errorLog('Error submitting request:', error);
             setError('Network error. Please check your connection and try again.');
         } finally {
             setSubmitting(false);
