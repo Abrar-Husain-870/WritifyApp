@@ -913,8 +913,9 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         );
         
         // Update the request status
+        // Note: The status must be one of: 'open', 'assigned', 'completed', 'cancelled' as per DB constraint
         await pool.query(
-            'UPDATE assignment_requests SET status = \'accepted\' WHERE id = $1',
+            'UPDATE assignment_requests SET status = \'assigned\' WHERE id = $1',
             [requestId]
         );
         
@@ -929,7 +930,7 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
         // Return success with client WhatsApp number for direct contact
         res.json({
             success: true,
-            message: 'Assignment accepted successfully',
+            message: 'Assignment assigned successfully',
             client_id: client.id,
             client_name: client.name,
             client_whatsapp: client.whatsapp_number ? retrievePhoneNumber(client.whatsapp_number) : null,
