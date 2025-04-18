@@ -8,6 +8,7 @@ require('dotenv').config();
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 
 // Encryption utilities for sensitive data
 // Use environment variable for encryption key with a fallback
@@ -201,6 +202,16 @@ if (process.env.NODE_ENV === 'production') {
     }, 5 * 60 * 1000);
 }
 */
+
+// Rate limiting configuration - protects against brute force attacks
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 15, // Limit each IP to 15 requests per window (15 minutes)
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: 'Too many login attempts from this IP, please try again after 15 minutes',
+    skipSuccessfulRequests: true // Don't count successful logins against the rate limit
+});
 
 // Middleware setup
 app.use(cors({
@@ -404,7 +415,7 @@ const authCors = (req, res, next) => {
 };
 
 // Auth routes with better error handling
-app.get('/auth/google', authCors, (req, res, next) => {
+app.get('/auth/google', authLimiter, authCors, (req, res, next) => {
     console.log('Starting Google OAuth flow');
     passport.authenticate('google', { 
         scope: ['profile', 'email'],
@@ -412,7 +423,7 @@ app.get('/auth/google', authCors, (req, res, next) => {
     })(req, res, next);
 });
 
-app.get('/auth/google/callback', authCors, (req, res, next) => {
+app.get('/auth/google/callback', authLimiter, authCors, (req, res, next) => {
     passport.authenticate('google', (err, user, info) => {
         console.log('Google OAuth callback - Error:', err?.message);
         console.log('Google OAuth callback - Info:', info?.message);
@@ -528,7 +539,7 @@ app.get('/auth/status', (req, res) => {
 });
 
 // Guest login endpoint - allows recruiters to explore the app without authentication
-app.post('/auth/guest-login', (req, res) => {
+app.post('/auth/guest-login', authLimiter, (req, res) => {
     // Apply CORS for this route specifically
     const origin = req.headers.origin;
     if (origin) {
