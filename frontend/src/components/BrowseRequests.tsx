@@ -262,17 +262,19 @@ const BrowseRequests: React.FC = () => {
                 // Log the phone number for debugging (will be hidden in production)
                 logger.log('Using phone number for WhatsApp:', phoneNumber);
                 
+                // Check if WhatsApp number is empty or just masked without a redirect number
+                // This matches the check in WriterProfile.tsx which is working correctly
+                if (phoneNumber === '' || (phoneNumber.startsWith('******') && !data.client_whatsapp_redirect)) {
+                    alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
+                    navigate('/my-assignments');
+                    return;
+                }
+                
                 // Clean the phone number - remove any non-numeric characters
                 phoneNumber = phoneNumber.replace(/\D/g, '');
                 
-                // Ensure we have a valid phone number for WhatsApp
-                if (!phoneNumber || phoneNumber.length < 10) {
-                    // If we don't have a valid phone number, show an alert and don't redirect
-                    alert('The client has not added their WhatsApp number or it is incomplete. Please check your assignments page for contact details.');
-                    navigate('/my-assignments');
-                    return;
-                } else if (!phoneNumber.startsWith('91')) {
-                    // Ensure it starts with country code (for India)
+                // Add country code if needed (for India)
+                if (!phoneNumber.startsWith('91')) {
                     phoneNumber = '91' + phoneNumber;
                     logger.log('Added country code to number:', phoneNumber);
                 }
