@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { API } from '../utils/api';
-import logger from '../utils/logger';
+
 
 interface RatingModalProps {
   isOpen: boolean;
@@ -40,7 +40,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
     setError(null);
 
     try {
-      logger.log('Submitting rating with data:', {
+      console.log('Submitting rating with data:', {
         rated_id: ratedUserId,
         rating,
         comment,

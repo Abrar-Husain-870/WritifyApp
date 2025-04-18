@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header'; // Assuming the Header component is in the same directory
 import { API } from '../utils/api'; // Correct import path for the API utility
-import logger from '../utils/logger';
+
 import { GuestContext } from '../App';
 
 interface User {
@@ -52,7 +52,7 @@ const Profile: React.FC = () => {
         })
         .then(res => {
             if (!res.ok) {
-                logger.error(`Profile fetch failed with status: ${res.status}`);
+                console.error(`Profile fetch failed with status: ${res.status}`);
                 return res.text().then(text => {
                     try {
                         const errorData = JSON.parse(text);
@@ -72,7 +72,7 @@ const Profile: React.FC = () => {
             setLoading(false);
         })
         .catch(error => {
-            logger.error('Error fetching profile:', error);
+            console.error('Error fetching profile:', error);
             setMessage({
                 type: 'error',
                 text: 'Failed to load profile. Please try again later.'
@@ -91,11 +91,7 @@ const Profile: React.FC = () => {
                 return;
             }
             
-            logger.log('Sending writer status update:', {
-                writer_status: status,
-                university_stream: user?.university_stream || '',
-                whatsapp_number: user?.whatsapp_number || ''
-            });
+            console.log('Submitting profile update with data:', { writer_status: status, university_stream: user?.university_stream || '', whatsapp_number: user?.whatsapp_number || '' });
             
             const response = await fetch(API.users.updateWriterProfile, {
                 method: 'PUT',
@@ -111,16 +107,16 @@ const Profile: React.FC = () => {
                 })
             });
 
-            logger.log('Response status:', response.status);
+            console.log('Response status:', response.status);
             
             if (response.ok) {
                 const updatedUser = await response.json();
-                logger.log('Updated user:', updatedUser);
+                console.log('Profile data received:', updatedUser);
                 setUser(updatedUser);
                 setMessage({ type: 'success', text: 'Writer status updated successfully!' });
             } else {
                 const errorText = await response.text();
-                logger.error('Error response:', errorText);
+                console.error('Profile update error:', errorText);
                 try {
                     const error = JSON.parse(errorText);
                     setMessage({ type: 'error', text: error.error || 'Failed to update writer status' });
@@ -129,7 +125,7 @@ const Profile: React.FC = () => {
                 }
             }
         } catch (error) {
-            logger.error('Error updating writer status:', error);
+            console.error('Error updating writer status:', error);
             setMessage({ type: 'error', text: 'Failed to update writer status' });
         }
     };
@@ -144,13 +140,13 @@ const Profile: React.FC = () => {
                 if (fileIdMatch && fileIdMatch[1]) {
                     const fileId = fileIdMatch[1];
                     imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-                    logger.log('Converted Google Drive URL:', imageUrl);
+                    console.log('Converted Google Drive URL:', imageUrl);
                 }
             } else if (imageUrl.includes('drive.google.com/open?id=')) {
                 const idParam = new URL(imageUrl).searchParams.get('id');
                 if (idParam) {
                     imageUrl = `https://drive.google.com/uc?export=view&id=${idParam}`;
-                    logger.log('Converted Google Drive sharing URL:', imageUrl);
+                    console.log('Converted Google Drive sharing URL:', imageUrl);
                 }
             }
         }
@@ -180,7 +176,7 @@ const Profile: React.FC = () => {
                 setMessage({ type: 'error', text: error.error || 'Failed to update portfolio' });
             }
         } catch (error) {
-            logger.error('Error updating portfolio:', error);
+            console.error('Error updating portfolio:', error);
             setMessage({ type: 'error', text: 'Failed to update portfolio' });
         }
     };
@@ -202,7 +198,7 @@ const Profile: React.FC = () => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                logger.error('Error deleting account:', errorText);
+                console.error('Error deleting account:', errorText);
                 try {
                     const error = JSON.parse(errorText);
                     setDeleteError(error.error || 'Failed to delete account');
@@ -212,6 +208,7 @@ const Profile: React.FC = () => {
                 return;
             }
 
+            console.log('Account deletion successful, redirecting to confirmation page');
             navigate('/account-deleted');
         } catch (error) {
             console.error('Error deleting account:', error);

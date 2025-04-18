@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
-import logger from '../utils/logger';
+
 import { GuestContext } from '../App';
 
 interface Writer {
@@ -78,12 +78,12 @@ const FindWriter: React.FC = () => {
                 }
                 // Note: We don't include any inactive writers in the sample data
             ];
-            logger.log('Showing sample writers for guest mode (all active or busy)');
+            console.log('Showing sample writers for guest mode (all active or busy)');
             setWriters(sampleWriters);
             setLoading(false);
         } else {
             // For registered users, fetch real writers
-            logger.log('Fetching writers from:', API.writers.all);
+            console.log('Fetching writers from:', API.writers.all);
             fetch(API.writers.all, {
                 method: 'GET',
                 credentials: 'include',
@@ -94,16 +94,16 @@ const FindWriter: React.FC = () => {
             })
             .then(res => {
                 if (!res.ok) {
-                    logger.error(`Writers fetch failed with status: ${res.status}`);
+                    console.error(`Writers fetch failed with status: ${res.status}`);
                     return res.text().then(text => {
-                        logger.error('Error response text:', text);
+                        console.error('Error response text:', text);
                         throw new Error(`HTTP error! Status: ${res.status}`);
                     });
                 }
                 return res.json();
             })
             .then(data => {
-                logger.log('Writers data received:', data);
+                console.log('Writers data received:', data);
                 let writersData = [];
                 
                 if (data && Array.isArray(data.writers)) {
@@ -112,7 +112,7 @@ const FindWriter: React.FC = () => {
                     // Handle case where API returns array directly
                     writersData = data;
                 } else {
-                    logger.log('Unexpected writers data format:', data);
+                    console.log('Unexpected writers data format:', data);
                 }
                 
                 // Filter out inactive writers
@@ -120,12 +120,12 @@ const FindWriter: React.FC = () => {
                     writer.writer_status === 'active' || writer.writer_status === 'busy'
                 );
                 
-                logger.log(`Filtered ${writersData.length - activeWriters.length} inactive writers, showing ${activeWriters.length} active/busy writers`);
+                console.log(`Filtered ${writersData.length - activeWriters.length} inactive writers, showing ${activeWriters.length} active/busy writers`);
                 setWriters(activeWriters);
                 setLoading(false);
             })
             .catch(error => {
-                logger.error('Error fetching writers:', error);
+                console.error('Error fetching writers:', error);
                 setLoading(false);
                 setError('Failed to load writers. Please try again later.');
             });

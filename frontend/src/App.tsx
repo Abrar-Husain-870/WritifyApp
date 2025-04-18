@@ -1,7 +1,7 @@
 // Working version - redeployed on April 14, 2025 with guest login feature
 import React, { useState, useEffect, createContext } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import logger from './utils/logger';
+
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import CreateAssignment from './components/CreateAssignment';
@@ -72,7 +72,7 @@ function App() {
         
         // If any logout flag is present or force parameter is in URL, prevent automatic login
         if (forceParam === 'true' || forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
-          logger.log('Logout flag or force parameter detected, preventing automatic login');
+          console.log('Logout flag or force parameter detected, preventing automatic login');
           
           // Aggressively clear all auth-related cookies
           clearAllCookies();
@@ -85,7 +85,7 @@ function App() {
 
         // Check if we're in guest mode first
         if (sessionStorage.getItem('GUEST_MODE') === 'true') {
-          logger.log('Guest mode detected in session storage');
+          console.log('Guest mode detected in session storage');
           setIsGuest(true);
           setIsAuthenticated(true);
           setIsLoading(false);
@@ -130,7 +130,7 @@ function App() {
             setIsAuthenticated(false);
           }
         } catch (error) {
-          logger.error('Error fetching auth status:', error);
+          console.error('Error fetching auth status:', error);
           setIsAuthenticated(false);
         }
       } catch (error) {

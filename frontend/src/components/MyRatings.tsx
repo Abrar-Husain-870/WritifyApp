@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logger from '../utils/logger';
+
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
@@ -70,7 +70,7 @@ const MyRatings: React.FC = () => {
         }
         
         const data = await response.json();
-        logger.log('Ratings data:', data);
+        console.log('Ratings data:', data);
         setRatings(data.ratings || []);
         setAverageRating(data.averageRating || 0);
         setTotalRatings(data.totalRatings || 0);

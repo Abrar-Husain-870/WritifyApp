@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logger from '../utils/logger';
+
 import Header from './Header';
 import RatingModal from './RatingModal';
 import { API } from '../utils/api';
@@ -179,12 +179,12 @@ const MyAssignments: React.FC = () => {
         }
         
         const data = await response.json();
-        logger.log('Assignments data:', data);
+        console.log('Assignments data:', data);
         setAssignments(data.assignments || []);
         setUserRole(data.role);
         setLoading(false);
       } catch (err) {
-        logger.error('Error fetching assignments:', err);
+        console.error('Error fetching assignments:', err);
         setError('Failed to load assignments. Please try again later.');
         setLoading(false);
       }
