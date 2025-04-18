@@ -137,13 +137,23 @@ const WriterProfile: React.FC = () => {
                 // Use the whatsapp_redirect property if available, otherwise fall back to the displayed number
                 let whatsappNumber = writer?.whatsapp_redirect || '';
                 
-                // If we don't have a redirect number but have a displayed number that's not masked, use it
-                if (!whatsappNumber && writer?.whatsapp_number && !writer?.whatsapp_number.startsWith('******')) {
-                    whatsappNumber = writer.whatsapp_number;
+                // If we don't have a redirect number but have a displayed number, use it
+                // Even if it's masked (******2167), the backend will handle it correctly
+                if (!whatsappNumber && writer?.whatsapp_number) {
+                    // If the number is masked (starts with ******), extract the last 4 digits
+                    if (writer.whatsapp_number.startsWith('******') && writer.whatsapp_number.length > 6) {
+                        // Extract the last 4 digits for the backend to look up
+                        const lastFourDigits = writer.whatsapp_number.slice(-4);
+                        whatsappNumber = lastFourDigits;
+                        logger.log('Using last 4 digits from masked number:', lastFourDigits);
+                    } else {
+                        // Use the full number if it's not masked
+                        whatsappNumber = writer.whatsapp_number;
+                    }
                 }
                 
-                // Check if WhatsApp number is empty or masked
-                if (!whatsappNumber || whatsappNumber.startsWith('******')) {
+                // Check if WhatsApp number is empty
+                if (!whatsappNumber) {
                     setSuccess('Request submitted successfully!');
                     alert('The writer has not added their WhatsApp number. Please check your assignments page later.');
                     

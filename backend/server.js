@@ -78,6 +78,21 @@ function getFullPhoneNumber(userId, lastFourDigits) {
         return storedNumber;
     }
     
+    // If we have the last 4 digits, try to find a matching number in the lookup table
+    if (lastFourDigits) {
+        console.log(`Trying to find a phone number ending with ${lastFourDigits} for user ${userId}`);
+        
+        // Search through all stored numbers to find one that ends with these digits
+        for (const [storedUserId, number] of whatsappLookup.entries()) {
+            if (number.endsWith(lastFourDigits)) {
+                console.log(`Found matching number for last 4 digits ${lastFourDigits}: ${number}`);
+                // Store this number for future lookups
+                whatsappLookup.set(userId.toString(), number);
+                return number;
+            }
+        }
+    }
+    
     // If we don't have the full number in our lookup table, return null
     // The frontend will show an appropriate message
     console.log(`No phone number found in lookup table for user ${userId}`);
