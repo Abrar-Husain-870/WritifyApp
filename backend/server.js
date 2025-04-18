@@ -1503,56 +1503,6 @@ app.post('/api/ratings', isAuthenticated, async (req, res) => {
     }
 });
 
-// Get user's assignments (temporary version without authentication for testing)
-app.get('/api/my-assignments-test', async (req, res) => {
-    try {
-        // For testing purposes, we'll return generic sample data
-        const sampleData = {
-            role: 'client',
-            assignments: [
-                {
-                    id: 1,
-                    request_id: 1,
-                    writer: {
-                        id: 2,
-                        name: 'Writer Name',
-                        email: 'writer@example.com',
-                        profile_picture: '',
-                        rating: 4.5, // Ensure this is a number
-                        total_ratings: 3,
-                        whatsapp_number: '1234567890'
-                    },
-                    client: {
-                        id: 1,
-                        name: 'Client Name',
-                        email: 'client@example.com',
-                        profile_picture: '',
-                        rating: 4.0, // Ensure this is a number
-                        total_ratings: 2,
-                        whatsapp_number: '0987654321'
-                    },
-                    status: 'in_progress',
-                    created_at: '2023-01-01T00:00:00Z',
-                    completed_at: null,
-                    course_name: 'Sample Course',
-                    course_code: 'CS101',
-                    assignment_type: 'Assignment',
-                    num_pages: 5,
-                    deadline: '2023-04-15T00:00:00Z',
-                    estimated_cost: 500,
-                    has_rated_writer: false,
-                    has_rated_client: false
-                }
-            ]
-        };
-        
-        res.json(sampleData);
-    } catch (error) {
-        console.error('Error in test endpoint:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
 // Complete assignment endpoint
 app.put('/api/assignments/:id/complete', isAuthenticated, async (req, res) => {
     const assignmentId = req.params.id;
