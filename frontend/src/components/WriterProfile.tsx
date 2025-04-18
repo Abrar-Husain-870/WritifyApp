@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Header from './Header';
 import { API } from '../utils/api';
+import logger from '../utils/logger';
+import Header from './Header';
 
 interface Writer {
     id: number;
@@ -51,7 +52,7 @@ const WriterProfile: React.FC = () => {
         })
         .then(res => res.json())
         .then(data => {
-            console.log('Writer data received:', data);
+            logger.log('Writer data received:', data);
             // Ensure rating is a number for proper display
             if (data && typeof data.rating === 'string') {
                 data.rating = parseFloat(data.rating) || 0;
