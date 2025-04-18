@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from '../utils/api';
-import logger from '../utils/logger';
 import Header from './Header';
 
 interface Writer {
@@ -52,7 +51,7 @@ const WriterProfile: React.FC = () => {
         })
         .then(res => res.json())
         .then(data => {
-            logger.log('Writer data received:', data);
+            console.log('Writer data received:', data);
             // Ensure rating is a number for proper display
             if (data && typeof data.rating === 'string') {
                 data.rating = parseFloat(data.rating) || 0;
@@ -152,14 +151,14 @@ const WriterProfile: React.FC = () => {
                 // Clean the phone number to contain only digits
                 whatsappNumber = whatsappNumber.replace(/\D/g, '');
                 
-                // Log the phone number for debugging (will be hidden in production)
-                logger.log('Using phone number for WhatsApp:', whatsappNumber);
+                // Log the phone number for debugging
+                console.log('Using phone number for WhatsApp:', whatsappNumber);
                 
                 // Ensure the number has the country code
                 if (whatsappNumber.length === 10) {
                     // Add country code (for India) if not already present
                     whatsappNumber = '91' + whatsappNumber;
-                    logger.log('Added country code to number:', whatsappNumber);
+                    console.log('Added country code to number:', whatsappNumber);
                 } else if (whatsappNumber.length < 10) {
                     setSuccess('Request submitted successfully!');
                     alert('The writer has an invalid phone number. Please check your assignments page later.');

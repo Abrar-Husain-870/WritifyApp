@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
-import logger from '../utils/logger';
 import { GuestContext } from '../App';
 import { exitGuestMode } from '../utils/auth';
 
@@ -119,11 +118,11 @@ const BrowseRequests: React.FC = () => {
                 setCurrentUserId(data.id);
             })
             .catch(err => {
-                logger.error('Error fetching user profile', err);
+                console.error('Error fetching user profile', err);
             })
             .finally(() => {
                 // Fetch assignment requests
-                logger.log('Fetching assignment requests from:', API.assignmentRequests.all);
+                console.log('Fetching assignment requests from:', API.assignmentRequests.all);
                 fetch(API.assignmentRequests.all, {
                     method: 'GET',
                     credentials: 'include',
@@ -134,29 +133,29 @@ const BrowseRequests: React.FC = () => {
                 })
                 .then(res => {
                     if (!res.ok) {
-                        logger.error(`Assignment requests fetch failed with status: ${res.status}`);
+                        console.error(`Assignment requests fetch failed with status: ${res.status}`);
                         return res.text().then(text => {
-                            logger.error('Error response text:', text);
+                            console.error('Error response text:', text);
                             throw new Error(`HTTP error! Status: ${res.status}`);
                         });
                     }
                     return res.json();
                 })
                 .then(data => {
-                    logger.log('Assignment requests data received:', data);
+                    console.log('Assignment requests data received:', data);
                     if (data && Array.isArray(data.requests)) {
                         setRequests(data.requests);
                     } else if (data && Array.isArray(data)) {
                         // Handle case where API returns array directly
                         setRequests(data);
                     } else {
-                        logger.log('Unexpected assignment requests data format:', data);
+                        console.log('Unexpected assignment requests data format:', data);
                         setRequests([]);
                     }
                     setLoading(false);
                 })
                 .catch(err => {
-                    logger.error('Error fetching requests:', err);
+                    console.error('Error fetching requests:', err);
                     setLoading(false);
                     setError('Failed to load assignment requests. Please try again later.');
                 });
@@ -241,15 +240,15 @@ const BrowseRequests: React.FC = () => {
             }
 
             const data = await response.json();
-            logger.log('API Response data:', data);
+            console.log('API Response data:', data);
             
             // Remove the accepted request from the list
             setRequests(requests.filter(req => req.id !== requestId));
             
             // Find the request that was accepted
             const acceptedRequest = requests.find(req => req.id === requestId);
-            logger.log('Accepted request:', acceptedRequest);
-            logger.log('Client data:', acceptedRequest?.client);
+            console.log('Accepted request:', acceptedRequest);
+            console.log('Client data:', acceptedRequest?.client);
             
             if (acceptedRequest) {
                 // Create a WhatsApp message with assignment details
@@ -262,8 +261,8 @@ const BrowseRequests: React.FC = () => {
                 // Clean the phone number to contain only digits
                 phoneNumber = phoneNumber.replace(/\D/g, '');
                 
-                // Log the phone number for debugging (will be hidden in production)
-                logger.log('Using phone number for WhatsApp:', phoneNumber);
+                // Log the phone number for debugging
+                console.log('Using phone number for WhatsApp:', phoneNumber);
                 
                 // Check if WhatsApp number is available
                 if (!phoneNumber) {
@@ -276,7 +275,7 @@ const BrowseRequests: React.FC = () => {
                 if (phoneNumber.length === 10) {
                     // Add country code (for India) if not already present
                     phoneNumber = '91' + phoneNumber;
-                    logger.log('Added country code to number:', phoneNumber);
+                    console.log('Added country code to number:', phoneNumber);
                 } else if (phoneNumber.length < 10) {
                     alert('The client has an invalid phone number. Please check your assignments page for contact details.');
                     navigate('/my-assignments');
