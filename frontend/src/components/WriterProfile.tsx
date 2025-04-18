@@ -133,9 +133,9 @@ const WriterProfile: React.FC = () => {
             });
 
             if (response.ok) {
-                // Use ONLY the whatsapp_redirect property from the writer object
-                // This should be the complete phone number stored in the backend
-                let whatsappNumber = writer?.whatsapp_redirect || '';
+                // Try to use the whatsapp_number property first, then fall back to whatsapp_redirect
+                // With our updated backend, both should now contain the full number
+                let whatsappNumber = writer?.whatsapp_number || writer?.whatsapp_redirect || '';
                 
                 // Check if WhatsApp number is empty
                 if (!whatsappNumber) {
@@ -147,6 +147,9 @@ const WriterProfile: React.FC = () => {
                     }, 1000);
                     return;
                 }
+                
+                // Log the original phone number for debugging
+                console.log('Original phone number:', whatsappNumber);
                 
                 // Clean the phone number to contain only digits
                 whatsappNumber = whatsappNumber.replace(/\D/g, '');
@@ -161,12 +164,20 @@ const WriterProfile: React.FC = () => {
                     console.log('Added country code to number:', whatsappNumber);
                 } else if (whatsappNumber.length < 10) {
                     setSuccess('Request submitted successfully!');
-                    alert('The writer has an invalid phone number. Please check your assignments page later.');
+                    alert(`The writer has an invalid phone number (${whatsappNumber}). Please check your assignments page later.`);
                     
                     setTimeout(() => {
                         navigate('/dashboard');
                     }, 1000);
                     return;
+                } else if (whatsappNumber.length > 10 && !whatsappNumber.startsWith('91')) {
+                    // If it's more than 10 digits but doesn't start with the country code,
+                    // check if adding the country code would make it valid
+                    if (whatsappNumber.length === 12 && whatsappNumber.startsWith('91')) {
+                        console.log('Number already has country code');
+                    } else {
+                        console.log('Number format is unusual:', whatsappNumber);
+                    }
                 }
                 
                 const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}. Let's discuss the details.`);
