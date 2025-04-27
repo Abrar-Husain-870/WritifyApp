@@ -26,6 +26,7 @@ interface AssignmentRequest {
     estimated_cost: number;
     status: 'open' | 'assigned' | 'completed';
     created_at: string;
+    unique_id?: string;
 }
 
 const BrowseRequests: React.FC = () => {
@@ -253,7 +254,7 @@ const BrowseRequests: React.FC = () => {
             
             if (acceptedRequest) {
                 // Create a WhatsApp message with assignment details
-                const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code}). Let's discuss the details.`;
+                const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code})${acceptedRequest.unique_id ? ` [ID: ${acceptedRequest.unique_id}]` : ''}. Let's discuss the details.`;
                 
                 // Get the client's WhatsApp number from the API response
                 // First try to use the redirect number, then fall back to the regular number
@@ -412,7 +413,14 @@ const BrowseRequests: React.FC = () => {
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{request.course_name}</h3>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">{request.course_code}</p>
+                                                <div className="flex items-center">
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{request.course_code}</p>
+                                                    {request.unique_id && (
+                                                        <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                                            ID: {request.unique_id}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div>
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">

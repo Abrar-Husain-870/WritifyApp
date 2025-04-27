@@ -33,6 +33,7 @@ interface Assignment {
   estimated_cost: number;
   has_rated_writer: boolean;
   has_rated_client: boolean;
+  unique_id?: string;
 }
 
 const MyAssignments: React.FC = () => {
@@ -424,6 +425,11 @@ const MyAssignments: React.FC = () => {
                         <div>
                           <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
                             {assignment.course_name} ({assignment.course_code})
+                            {assignment.unique_id && (
+                              <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                ID: {assignment.unique_id}
+                              </span>
+                            )}
                           </h3>
                           <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
                             {assignment.assignment_type} - {assignment.num_pages} pages

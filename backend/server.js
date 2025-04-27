@@ -11,6 +11,12 @@ const { setupDatabase } = require('./db/setupDatabase');
 // Configuration
 const ASSIGNMENT_EXPIRATION_DAYS = 7; // Assignment requests expire after 7 days
 
+// Function to generate a 6-digit unique ID
+function generateUniqueId() {
+    // Generate a random 6-digit number between 100000 and 999999
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 // Import security module
 const security = require('./security');
 
@@ -856,15 +862,17 @@ app.post('/api/assignment-requests', isAuthenticated, async (req, res) => {
             num_pages: parseInt(num_pages),
             deadline: formattedDeadline,
             // Round estimated cost to the nearest multiple of 50
-            estimated_cost: Math.round(parseFloat(estimated_cost) / 50) * 50
+            estimated_cost: Math.round(parseFloat(estimated_cost) / 50) * 50,
+            // Generate a 6-digit unique ID
+            unique_id: generateUniqueId()
         };
 
         console.log('Creating assignment request with data:', sanitizedData);
 
         const result = await pool.query(`
             INSERT INTO assignment_requests 
-            (client_id, course_name, course_code, assignment_type, num_pages, deadline, estimated_cost, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')
+            (client_id, course_name, course_code, assignment_type, num_pages, deadline, estimated_cost, status, unique_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8)
             RETURNING *
         `, [
             sanitizedData.client_id, 
@@ -873,7 +881,8 @@ app.post('/api/assignment-requests', isAuthenticated, async (req, res) => {
             sanitizedData.assignment_type, 
             sanitizedData.num_pages, 
             sanitizedData.deadline, 
-            sanitizedData.estimated_cost
+            sanitizedData.estimated_cost,
+            sanitizedData.unique_id
         ]);
         
         res.status(201).json(result.rows[0]);
@@ -906,6 +915,7 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
                 ar.estimated_cost,
                 ar.status,
                 ar.created_at,
+                ar.unique_id,
                 u.id as client_id,
                 u.name as client_name,
                 u.rating as client_rating,
