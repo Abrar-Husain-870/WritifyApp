@@ -445,7 +445,7 @@ const BrowseRequests: React.FC = () => {
                                                         if (request.expiration_deadline) {
                                                             const expirationDate = new Date(request.expiration_deadline);
                                                             const daysLeft = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                                            return `${expirationDate.toLocaleDateString()} (${daysLeft} days)`;
+                                                            return `${expirationDate.toLocaleDateString()} (${Math.max(0, daysLeft)} days)`;
                                                         }
                                                         
                                                         // Otherwise calculate it as 7 days from creation date
@@ -453,7 +453,8 @@ const BrowseRequests: React.FC = () => {
                                                         const expirationDate = new Date(creationDate);
                                                         expirationDate.setDate(creationDate.getDate() + 7);
                                                         const daysLeft = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                                        return `${expirationDate.toLocaleDateString()} (${daysLeft} days)`;
+                                                        // Ensure we don't show negative days
+                                                        return `${expirationDate.toLocaleDateString()} (${Math.max(0, daysLeft)} days)`;
                                                     })()}
                                                 </span>
                                             </div>

@@ -8,6 +8,9 @@ const crypto = require('crypto');
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
 
+// Configuration
+const ASSIGNMENT_EXPIRATION_DAYS = 7; // Assignment requests expire after 7 days
+
 // Import security module
 const security = require('./security');
 
@@ -887,6 +890,11 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
         //     return res.status(403).json({ error: 'Only writers can browse assignment requests' });
         // }
 
+        // Calculate the date 7 days ago for filtering expired requests
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - ASSIGNMENT_EXPIRATION_DAYS);
+        const sevenDaysAgoStr = sevenDaysAgo.toISOString();
+
         const result = await pool.query(`
             SELECT 
                 ar.id,
@@ -906,8 +914,9 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
             FROM assignment_requests ar
             JOIN users u ON u.id = ar.client_id
             WHERE ar.status = 'open'
+            AND ar.created_at > $1
             ORDER BY ar.created_at DESC
-        `);
+        `, [sevenDaysAgoStr]);
         
         // Transform the data to match the expected format in the frontend
         const transformedRequests = result.rows.map(req => ({
@@ -1933,6 +1942,27 @@ const preventDbOperationsDuringLogout = (req, res, next) => {
 
 // Apply this middleware to all routes
 app.use(preventDbOperationsDuringLogout);
+
+// Set up cron job to clean up expired assignment requests (runs daily at midnight)
+cron.schedule('0 0 * * *', async () => {
+    console.log('Running cleanup for expired assignment requests...');
+    try {
+        // Calculate the date 7 days ago
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - ASSIGNMENT_EXPIRATION_DAYS);
+        const sevenDaysAgoStr = sevenDaysAgo.toISOString();
+        
+        // Delete expired open assignment requests
+        const result = await pool.query(
+            'DELETE FROM assignment_requests WHERE status = $1 AND created_at < $2 RETURNING id',
+            ['open', sevenDaysAgoStr]
+        );
+        
+        console.log(`Successfully deleted ${result.rowCount} expired assignment requests`);
+    } catch (error) {
+        console.error('Error cleaning up expired assignment requests:', error);
+    }
+});
 
 // API logout route that matches frontend configuration
 app.get('/api/auth/logout', authCors, (req, res) => {
