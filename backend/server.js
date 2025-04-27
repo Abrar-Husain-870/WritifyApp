@@ -945,7 +945,8 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
             deadline: req.deadline,
             estimated_cost: req.estimated_cost,
             status: req.status,
-            created_at: req.created_at
+            created_at: req.created_at,
+            unique_id: req.unique_id
         }));
 
         console.log(`Found ${transformedRequests.length} open assignment requests`);
@@ -1115,7 +1116,8 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             client_id: client.id,
             client_name: client.name,
             client_whatsapp: client.whatsapp_number || null,
-            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null
+            client_whatsapp_redirect: whatsappRedirect || client.whatsapp_number || null,
+            unique_id: request.unique_id || null
         });
         
         // Response sent with WhatsApp data (not logging actual numbers)
