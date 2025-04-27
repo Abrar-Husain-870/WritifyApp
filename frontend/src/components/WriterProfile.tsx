@@ -134,6 +134,10 @@ const WriterProfile: React.FC = () => {
             });
 
             if (response.ok) {
+                // Get the response data which includes the unique ID
+                const responseData = await response.json();
+                const uniqueId = responseData.unique_id;
+                
                 // Try to use the whatsapp_number property first, then fall back to whatsapp_redirect
                 // With our updated backend, both should now contain the full number
                 let whatsappNumber = writer?.whatsapp_number || writer?.whatsapp_redirect || '';
@@ -179,7 +183,7 @@ const WriterProfile: React.FC = () => {
                     }
                 }
                 
-                const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}. Let's discuss the details.`);
+                const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}${uniqueId ? ` [ID: ${uniqueId}]` : ''}. Let's discuss the details.`);
                 
                 setSuccess('Request submitted successfully! Connecting to WhatsApp...');
                 
