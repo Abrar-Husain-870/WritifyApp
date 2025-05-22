@@ -131,25 +131,73 @@ const Profile: React.FC = () => {
         }
     };
 
+    // Function to validate if a URL is likely an image URL
+    const isValidImageUrl = (url: string): boolean => {
+        if (!url) return false;
+        
+        // Check for common image extensions
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+        const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext));
+        
+        // Check for known image hosting domains
+        const imageHostingDomains = [
+            'imagekit.io', 'imgur.com', 'i.imgur.com', 'ibb.co', 'postimg.cc',
+            'cloudinary.com', 'res.cloudinary.com', 'drive.google.com', 'dropbox.com',
+            'dl.dropboxusercontent.com', 'onedrive.live.com', '1drv.ms', 'flickr.com'
+        ];
+        const isFromImageHost = imageHostingDomains.some(domain => url.toLowerCase().includes(domain));
+        
+        // If it's from a known image host but doesn't have an image extension, we'll trust it
+        // Otherwise, it should have a valid image extension
+        return isFromImageHost || hasImageExtension;
+    };
+    
     const handlePortfolioUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         
         let imageUrl = portfolio.sample_work_image;
-        if (imageUrl) {
-            if (imageUrl.includes('drive.google.com/file/d/')) {
-                const fileIdMatch = imageUrl.match(/\/d\/([^/]+)/);
-                if (fileIdMatch && fileIdMatch[1]) {
-                    const fileId = fileIdMatch[1];
-                    imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-                    console.log('Converted Google Drive URL:', imageUrl);
-                }
-            } else if (imageUrl.includes('drive.google.com/open?id=')) {
-                const idParam = new URL(imageUrl).searchParams.get('id');
-                if (idParam) {
-                    imageUrl = `https://drive.google.com/uc?export=view&id=${idParam}`;
-                    console.log('Converted Google Drive sharing URL:', imageUrl);
-                }
+        if (!imageUrl) {
+            setMessage({ type: 'error', text: 'Please provide an image URL' });
+            return;
+        }
+        
+        // Process various URL types
+        if (imageUrl.includes('drive.google.com/file/d/')) {
+            const fileIdMatch = imageUrl.match(/\/d\/([^/]+)/);
+            if (fileIdMatch && fileIdMatch[1]) {
+                const fileId = fileIdMatch[1];
+                imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+                debugLog('Converted Google Drive URL:', imageUrl);
             }
+        } else if (imageUrl.includes('drive.google.com/open?id=')) {
+            const idParam = new URL(imageUrl).searchParams.get('id');
+            if (idParam) {
+                imageUrl = `https://drive.google.com/uc?export=view&id=${idParam}`;
+                debugLog('Converted Google Drive sharing URL:', imageUrl);
+            }
+        } else if (imageUrl.includes('dropbox.com')) {
+            // Convert dropbox share links to direct links
+            imageUrl = imageUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+            imageUrl = imageUrl.replace('?dl=0', '').replace('?dl=1', '');
+            debugLog('Converted Dropbox URL:', imageUrl);
+        } else if (imageUrl.includes('1drv.ms') || imageUrl.includes('onedrive.live.com')) {
+            // OneDrive uses complex sharing URLs, we'll add a note about this
+            debugLog('OneDrive URL detected. Using as is:', imageUrl);
+        } else if (imageUrl.includes('imgur.com') && !imageUrl.includes('i.imgur.com')) {
+            // Convert regular imgur links to direct image links if needed
+            if (!imageUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                imageUrl = imageUrl.replace('imgur.com', 'i.imgur.com') + '.jpg';
+                debugLog('Converted Imgur URL:', imageUrl);
+            }
+        }
+        
+        // Validate the URL is likely an image
+        if (!isValidImageUrl(imageUrl)) {
+            setMessage({ 
+                type: 'error', 
+                text: 'The URL may not be a valid image. Please ensure it points directly to an image file.'
+            });
+            // We'll still continue with the submission, but warn the user
         }
         
         try {
@@ -379,17 +427,18 @@ const Profile: React.FC = () => {
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    For best results, use direct image URLs from ImageKit's free image hosting tool or other image hosting services.
+                                    You can use any image hosting webs to showcase your portfolio work.
                                 </p>
                                 <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm">
-                                    <p className="font-medium text-blue-700 dark:text-blue-200">How to use ImageKit's free image hosting:</p>
-                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
-                                        <li>Go to <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">ImageKit's free image hosting tool</a></li>
-                                        <li>Upload your image using the tool</li>
-                                        <li>Copy the URL of the uploaded image</li>
-                                        <li>Paste it here</li>
-                                    </ol>
-                                    <p className="mt-2 text-blue-700 dark:text-blue-200">Note: Images are hosted for free and no signup is required.</p>
+                                    <p className="font-medium text-blue-700 dark:text-blue-200">Supported Image Hosting Services:</p>
+                                    <ul className="list-disc pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
+                                        <li><strong>ImageKit:</strong> <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">Free image hosting tool</a> (No signup required)</li>
+                                        <li><strong>Google Drive:</strong> Share your image and paste the link (automatically converted)</li>
+                                        <li><strong>Dropbox:</strong> Share your image and paste the link (automatically converted)</li>
+                                        <li><strong>Imgur:</strong> <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
+                                        <li><strong>Other services:</strong> Any direct image URL will work (ending with .jpg, .png, etc.)</li>
+                                    </ul>
+                                    <p className="mt-2 text-blue-700 dark:text-blue-200">Tip: Right-click on any online image and select "Copy image address" to get a direct URL.</p>
                                 </div>
                                 {portfolio.sample_work_image && (
                                     <div className="mt-4 border p-3 rounded-md">
@@ -398,6 +447,7 @@ const Profile: React.FC = () => {
                                             src={portfolio.sample_work_image} 
                                             alt="Preview" 
                                             className="max-h-60 rounded border border-gray-300"
+                                            onLoad={() => setMessage({ type: 'success', text: 'Image loaded successfully!' })}
                                             onError={(e) => {
                                                 const target = e.target as HTMLImageElement;
                                                 target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20200%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22200%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22150%22%20y%3D%22110%22%3EInvalid%20Image%20URL%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
