@@ -441,7 +441,7 @@ const FindWriter: React.FC = () => {
                                         className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 transform hover:scale-105"
                                     >
                                         {/* Sample Work Image */}
-                                        <div className="w-full bg-gray-200 rounded-t-lg overflow-hidden shadow-inner" style={{ height: '380px', borderRadius: '0.5rem 0.5rem 0 0' }}>
+                                        <div className="w-full bg-gray-200 rounded-t-lg overflow-hidden shadow-inner" style={{ height: '420px', borderRadius: '0.5rem 0.5rem 0 0', border: '1px solid rgba(0,0,0,0.05)' }}>
                                             <img 
                                                 src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22565%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20565%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22565%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22280%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'}
                                                 alt={`${writer.name}'s sample work`}

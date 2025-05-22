@@ -2,7 +2,7 @@
  * Utility to control logging throughout the application
  * Set to false in production to disable all debug logs
  */
-export const DEBUG_MODE = false;
+export const DEBUG_MODE = true;
 
 /**
  * Controlled console logging that only outputs when DEBUG_MODE is true
