@@ -237,7 +237,7 @@ const WriterProfile: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Writer Profile Section */}
                     <div>
-                        <div className="bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800 shadow-lg overflow-hidden rounded-lg" style={{ borderRadius: '0.75rem' }}>
                             <div className="mb-8 rounded-lg overflow-hidden shadow-lg">
                                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Sample Work</h3>
                                 <div className="bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shadow-inner" style={{ height: '700px', borderRadius: '0.75rem', border: '1px solid rgba(0,0,0,0.1)' }}>
