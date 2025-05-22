@@ -411,22 +411,28 @@ const FindWriter: React.FC = () => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {/* Share with All Writers Card */}
+                                {/* Broadcast Assignment Request Card */}
                                 <div
                                     onClick={() => setShowShareForm(true)}
-                                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 transform hover:scale-105 border-2 border-blue-500"
+                                    className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-indigo-900 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-blue-200 dark:border-blue-800 cursor-pointer"
                                 >
-                                    <div className="h-48 w-full bg-blue-100 flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                        </svg>
+                                    <div className="h-48 w-full flex items-center justify-center relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-blue-500 opacity-10 dark:opacity-20"></div>
+                                        <div className="relative z-10 flex flex-col items-center justify-center space-y-3">
+                                            <div className="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                                </svg>
+                                            </div>
+                                            <span className="px-4 py-1 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-full shadow-sm">Fast Response</span>
+                                        </div>
                                     </div>
                                     <div className="p-6">
-                                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Share details with every writer</h3>
-                                        <p className="text-gray-600 dark:text-gray-400 mb-4">Submit your assignment request to all available writers at once</p>
-                                        <div className="flex items-center text-blue-600">
-                                            <span className="font-medium">Click to share details</span>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Broadcast Your Assignment</h3>
+                                        <p className="text-gray-600 dark:text-gray-400 mt-2 mb-4">Reach all available writers instantly and get multiple responses for your project</p>
+                                        <div className="flex items-center text-blue-600 dark:text-blue-400 group">
+                                            <span className="font-medium group-hover:underline">Create broadcast request</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                             </svg>
                                         </div>
