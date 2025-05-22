@@ -494,26 +494,19 @@ const Profile: React.FC = () => {
                                 <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm">
                                     <p className="font-medium text-blue-700 dark:text-blue-200">Supported Image Hosting Services:</p>
                                     <ul className="list-disc pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
-                                        <li><strong>ImageKit:</strong> <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">Free image hosting tool</a> (No signup required)</li>
                                         <li><strong>Google Drive:</strong> Upload your image, right-click and select "Get link", set to "Anyone with the link", then copy and paste the link</li>
+                                        <li><strong>ImageKit:</strong> <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">Free image hosting tool</a></li>
                                         <li><strong>ImgBB:</strong> <a href="https://imgbb.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a>, then use the "Direct link" URL</li>
                                         <li><strong>FreeImage.host:</strong> <a href="https://freeimage.host/" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
                                         <li><strong>Imgur:</strong> <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
                                     </ul>
-                                    <p className="mt-2 text-blue-700 dark:text-blue-200 font-medium">For Google Drive images (Recommended Method):</p>
+                                    <p className="mt-2 text-blue-700 dark:text-blue-200 font-medium">For Google Drive images:</p>
                                     <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
                                         <li>Upload your image to Google Drive</li>
-                                        <li>Right-click the image and select "Share"</li>
-                                        <li>Click "Get link" and set access to "Anyone with the link"</li>
-                                        <li>Copy the link (format: drive.google.com/file/d/...)</li>
-                                        <li>Paste it here - our system will automatically convert it</li>
-                                    </ol>
-                                    <p className="mt-2 text-blue-600 dark:text-blue-300"><strong>Important:</strong> If your Google Drive image doesn't display, try these alternatives:</p>
-                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
-                                        <li>Open your image in Google Drive and click the "⋮" (three dots) menu</li>
-                                        <li>Select "Download" to save the image to your computer</li>
-                                        <li>Upload the image to <a href="https://imgbb.com/upload" target="_blank" rel="noopener noreferrer" className="underline">ImgBB</a> instead</li>
-                                        <li>Use the "Direct link" URL provided by ImgBB</li>
+                                        <li>Click on the share icon (person with + symbol) in the top right corner</li>
+                                        <li>In the sharing settings, change from "Restricted" to "Anyone with the link"</li>
+                                        <li>Click "Copy link" to copy the sharing URL</li>
+                                        <li>Paste the link here - our system will automatically convert it</li>
                                     </ol>
                                 </div>
                                 {portfolio.sample_work_image && (
