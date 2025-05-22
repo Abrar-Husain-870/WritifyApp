@@ -199,9 +199,10 @@ const Profile: React.FC = () => {
                 }
                 
                 if (fileId) {
-                    // Use the export=download parameter for better compatibility
-                    imageUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                    debugLog('Converted Google Drive URL:', imageUrl);
+                    // Use Google's own proxy service to avoid CORS issues
+                    // This is a more reliable solution than direct Google Drive links
+                    imageUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+                    debugLog('Converted Google Drive URL to lh3 format:', imageUrl);
                 }
             } 
             // Dropbox handling
@@ -499,13 +500,20 @@ const Profile: React.FC = () => {
                                         <li><strong>FreeImage.host:</strong> <a href="https://freeimage.host/" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
                                         <li><strong>Imgur:</strong> <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
                                     </ul>
-                                    <p className="mt-2 text-blue-700 dark:text-blue-200 font-medium">For Google Drive images:</p>
+                                    <p className="mt-2 text-blue-700 dark:text-blue-200 font-medium">For Google Drive images (Recommended Method):</p>
                                     <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
                                         <li>Upload your image to Google Drive</li>
                                         <li>Right-click the image and select "Share"</li>
                                         <li>Click "Get link" and set access to "Anyone with the link"</li>
                                         <li>Copy the link (format: drive.google.com/file/d/...)</li>
                                         <li>Paste it here - our system will automatically convert it</li>
+                                    </ol>
+                                    <p className="mt-2 text-blue-600 dark:text-blue-300"><strong>Important:</strong> If your Google Drive image doesn't display, try these alternatives:</p>
+                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
+                                        <li>Open your image in Google Drive and click the "⋮" (three dots) menu</li>
+                                        <li>Select "Download" to save the image to your computer</li>
+                                        <li>Upload the image to <a href="https://imgbb.com/upload" target="_blank" rel="noopener noreferrer" className="underline">ImgBB</a> instead</li>
+                                        <li>Use the "Direct link" URL provided by ImgBB</li>
                                     </ol>
                                 </div>
                                 {portfolio.sample_work_image && (
@@ -517,6 +525,30 @@ const Profile: React.FC = () => {
                                             className="max-h-60 rounded border border-gray-300"
                                             onLoad={() => setMessage({ type: 'success', text: 'Image loaded successfully!' })}
                                             onError={(e) => {
+                                                // Try to detect if this is a Google Drive URL that failed
+                                                const imgUrl = portfolio.sample_work_image;
+                                                if (imgUrl.includes('drive.google.com') || imgUrl.includes('lh3.googleusercontent.com')) {
+                                                    // Extract the file ID
+                                                    let fileId = null;
+                                                    if (imgUrl.includes('/d/')) {
+                                                        const match = imgUrl.match(/\/d\/([^/\?]+)/);
+                                                        if (match && match[1]) fileId = match[1];
+                                                    } else if (imgUrl.includes('id=')) {
+                                                        const urlObj = new URL(imgUrl);
+                                                        fileId = urlObj.searchParams.get('id');
+                                                    }
+                                                    
+                                                    if (fileId) {
+                                                        // Try an alternative format
+                                                        const alternativeUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+                                                        debugLog('Trying alternative Google Drive URL:', alternativeUrl);
+                                                        setMessage({ type: 'error', text: 'Trying alternative Google Drive format...' });
+                                                        (e.target as HTMLImageElement).src = alternativeUrl;
+                                                        return;
+                                                    }
+                                                }
+                                                
+                                                // If not a Google Drive URL or fallback failed
                                                 const target = e.target as HTMLImageElement;
                                                 target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20200%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22200%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22150%22%20y%3D%22110%22%3EInvalid%20Image%20URL%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
                                                 target.onerror = null; // Prevent infinite error loop
