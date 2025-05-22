@@ -141,15 +141,27 @@ const Profile: React.FC = () => {
         
         // Check for known image hosting domains
         const imageHostingDomains = [
-            'imagekit.io', 'imgur.com', 'i.imgur.com', 'ibb.co', 'postimg.cc',
-            'cloudinary.com', 'res.cloudinary.com', 'drive.google.com', 'dropbox.com',
-            'dl.dropboxusercontent.com', 'onedrive.live.com', '1drv.ms', 'flickr.com'
+            // Common image hosting services
+            'imagekit.io', 'imgur.com', 'i.imgur.com', 'ibb.co', 'i.ibb.co', 'postimg.cc',
+            'cloudinary.com', 'res.cloudinary.com', 'flickr.com', 'imgbb.com',
+            
+            // Cloud storage services
+            'drive.google.com', 'dropbox.com', 'dl.dropboxusercontent.com', 
+            'onedrive.live.com', '1drv.ms',
+            
+            // Additional image hosting services
+            'freeimage.host', 'iili.io', 'imgbox.com', 'pasteboard.co',
+            'tinypic.com', 'photobucket.com', 'postimages.org', 'imgpile.com',
+            'snipboard.io', 'imgtr.ee', 'pixhost.to', 'picr.de'
         ];
         const isFromImageHost = imageHostingDomains.some(domain => url.toLowerCase().includes(domain));
         
-        // If it's from a known image host but doesn't have an image extension, we'll trust it
+        // Special case for Google Drive URLs with export=download or export=view
+        const isGoogleDriveImage = url.includes('drive.google.com/uc?export=');
+        
+        // If it's from a known image host or a special case URL, we'll trust it
         // Otherwise, it should have a valid image extension
-        return isFromImageHost || hasImageExtension;
+        return isFromImageHost || isGoogleDriveImage || hasImageExtension;
     };
     
     const handlePortfolioUpdate = async (e: React.FormEvent) => {
@@ -162,33 +174,82 @@ const Profile: React.FC = () => {
         }
         
         // Process various URL types
-        if (imageUrl.includes('drive.google.com/file/d/')) {
-            const fileIdMatch = imageUrl.match(/\/d\/([^/]+)/);
-            if (fileIdMatch && fileIdMatch[1]) {
-                const fileId = fileIdMatch[1];
-                imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-                debugLog('Converted Google Drive URL:', imageUrl);
+        try {
+            // Google Drive handling
+            if (imageUrl.includes('drive.google.com')) {
+                // Extract file ID from various Google Drive URL formats
+                let fileId = null;
+                
+                // Format: https://drive.google.com/file/d/FILE_ID/view
+                if (imageUrl.includes('/file/d/')) {
+                    const fileIdMatch = imageUrl.match(/\/d\/([^/\?]+)/);
+                    if (fileIdMatch && fileIdMatch[1]) {
+                        fileId = fileIdMatch[1];
+                    }
+                } 
+                // Format: https://drive.google.com/open?id=FILE_ID
+                else if (imageUrl.includes('open?id=')) {
+                    const urlObj = new URL(imageUrl);
+                    fileId = urlObj.searchParams.get('id');
+                }
+                // Format: https://drive.google.com/uc?export=view&id=FILE_ID
+                else if (imageUrl.includes('uc?') && imageUrl.includes('id=')) {
+                    const urlObj = new URL(imageUrl);
+                    fileId = urlObj.searchParams.get('id');
+                }
+                
+                if (fileId) {
+                    // Use the export=download parameter for better compatibility
+                    imageUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                    debugLog('Converted Google Drive URL:', imageUrl);
+                }
+            } 
+            // Dropbox handling
+            else if (imageUrl.includes('dropbox.com')) {
+                // Convert dropbox share links to direct links
+                imageUrl = imageUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+                imageUrl = imageUrl.replace('?dl=0', '').replace('?dl=1', '');
+                debugLog('Converted Dropbox URL:', imageUrl);
+            } 
+            // OneDrive handling
+            else if (imageUrl.includes('1drv.ms') || imageUrl.includes('onedrive.live.com')) {
+                debugLog('OneDrive URL detected. Using as is:', imageUrl);
+            } 
+            // Imgur handling
+            else if (imageUrl.includes('imgur.com') && !imageUrl.includes('i.imgur.com')) {
+                // Convert regular imgur links to direct image links if needed
+                if (!imageUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                    imageUrl = imageUrl.replace('imgur.com', 'i.imgur.com') + '.jpg';
+                    debugLog('Converted Imgur URL:', imageUrl);
+                }
             }
-        } else if (imageUrl.includes('drive.google.com/open?id=')) {
-            const idParam = new URL(imageUrl).searchParams.get('id');
-            if (idParam) {
-                imageUrl = `https://drive.google.com/uc?export=view&id=${idParam}`;
-                debugLog('Converted Google Drive sharing URL:', imageUrl);
+            // ImgBB handling (ibb.co)
+            else if (imageUrl.includes('ibb.co')) {
+                // ibb.co links are already direct, but make sure we're getting the image
+                if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                    // If it's a sharing page URL, try to extract the image ID
+                    const ibbMatch = imageUrl.match(/ibb\.co\/([^/\?]+)/);
+                    if (ibbMatch && ibbMatch[1]) {
+                        // Convert to direct image URL format
+                        imageUrl = `https://i.ibb.co/${ibbMatch[1]}/image.jpg`;
+                        debugLog('Converted ImgBB URL:', imageUrl);
+                    }
+                }
             }
-        } else if (imageUrl.includes('dropbox.com')) {
-            // Convert dropbox share links to direct links
-            imageUrl = imageUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
-            imageUrl = imageUrl.replace('?dl=0', '').replace('?dl=1', '');
-            debugLog('Converted Dropbox URL:', imageUrl);
-        } else if (imageUrl.includes('1drv.ms') || imageUrl.includes('onedrive.live.com')) {
-            // OneDrive uses complex sharing URLs, we'll add a note about this
-            debugLog('OneDrive URL detected. Using as is:', imageUrl);
-        } else if (imageUrl.includes('imgur.com') && !imageUrl.includes('i.imgur.com')) {
-            // Convert regular imgur links to direct image links if needed
-            if (!imageUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
-                imageUrl = imageUrl.replace('imgur.com', 'i.imgur.com') + '.jpg';
-                debugLog('Converted Imgur URL:', imageUrl);
+            // FreeImage.host handling
+            else if (imageUrl.includes('freeimage.host')) {
+                // Convert viewing URL to direct image URL
+                if (imageUrl.includes('/i/')) {
+                    const imageIdMatch = imageUrl.match(/\/i\/([^/\?]+)/);
+                    if (imageIdMatch && imageIdMatch[1]) {
+                        imageUrl = `https://iili.io/${imageIdMatch[1]}.jpg`;
+                        debugLog('Converted FreeImage.host URL:', imageUrl);
+                    }
+                }
             }
+        } catch (error) {
+            debugLog('Error processing image URL:', error);
+            // Continue with the original URL if there's an error in processing
         }
         
         // Validate the URL is likely an image
@@ -427,18 +488,25 @@ const Profile: React.FC = () => {
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    You can use any image hosting webs to showcase your portfolio work.
+                                    You can use any image hosting website to showcase your portfolio work.
                                 </p>
                                 <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm">
                                     <p className="font-medium text-blue-700 dark:text-blue-200">Supported Image Hosting Services:</p>
                                     <ul className="list-disc pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
                                         <li><strong>ImageKit:</strong> <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">Free image hosting tool</a> (No signup required)</li>
-                                        <li><strong>Google Drive:</strong> Share your image and paste the link (automatically converted)</li>
-                                        <li><strong>Dropbox:</strong> Share your image and paste the link (automatically converted)</li>
+                                        <li><strong>Google Drive:</strong> Upload your image, right-click and select "Get link", set to "Anyone with the link", then copy and paste the link</li>
+                                        <li><strong>ImgBB:</strong> <a href="https://imgbb.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a>, then use the "Direct link" URL</li>
+                                        <li><strong>FreeImage.host:</strong> <a href="https://freeimage.host/" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
                                         <li><strong>Imgur:</strong> <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
-                                        <li><strong>Other services:</strong> Any direct image URL will work (ending with .jpg, .png, etc.)</li>
                                     </ul>
-                                    <p className="mt-2 text-blue-700 dark:text-blue-200">Tip: Right-click on any online image and select "Copy image address" to get a direct URL.</p>
+                                    <p className="mt-2 text-blue-700 dark:text-blue-200 font-medium">For Google Drive images:</p>
+                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
+                                        <li>Upload your image to Google Drive</li>
+                                        <li>Right-click the image and select "Share"</li>
+                                        <li>Click "Get link" and set access to "Anyone with the link"</li>
+                                        <li>Copy the link (format: drive.google.com/file/d/...)</li>
+                                        <li>Paste it here - our system will automatically convert it</li>
+                                    </ol>
                                 </div>
                                 {portfolio.sample_work_image && (
                                     <div className="mt-4 border p-3 rounded-md">
