@@ -270,8 +270,7 @@ app.set('trust proxy', 1);
 // Configure security headers with helmet
 security.configureHelmet(app);
 
-// Trust the proxy chain to get the correct user IP on Render
-app.set('trust proxy', true);
+// Proxy trust is now handled by the rate-limiter package directly.
 
 // Apply rate limiting to all routes
 app.use(security.apiLimiter);
