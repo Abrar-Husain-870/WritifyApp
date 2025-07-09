@@ -22,7 +22,7 @@ const apiLimiter = rateLimit({
 
 // More strict rate limiting for authentication routes
 const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
+    windowMs: 10 * 60 * 1000, // 1 hour
     max: 10, // limit each IP to 10 login attempts per hour
     standardHeaders: true,
     legacyHeaders: false,
