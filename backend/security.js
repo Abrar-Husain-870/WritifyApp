@@ -16,10 +16,11 @@ const apiLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests from this IP, please try again after 15 minutes',
-    // Trust the loopback and link-local addresses (Render's setup)
-    trustProxy: 'loopback'
+    // The rate-limiter should use the IP address provided by Express
+    trustProxy: false
 });
 
+// More strict rate limiting for authentication routes
 // More strict rate limiting for authentication routes
 // More strict rate limiting for authentication routes
 // More strict rate limiting for authentication routes
@@ -29,8 +30,8 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many login attempts from this IP, please try again after a minute.', // Updated message for testing
-    // Trust the loopback and link-local addresses (Render's setup)
-    trustProxy: 'loopback'
+    // The rate-limiter should use the IP address provided by Express
+    trustProxy: false
 });
 
 // Function to check if account is locked

@@ -270,7 +270,8 @@ app.set('trust proxy', 1);
 // Configure security headers with helmet
 security.configureHelmet(app);
 
-// Proxy trust is now handled by the rate-limiter package directly.
+// Trust the first proxy in front of the app (e.g., on Render)
+app.set('trust proxy', 1);
 
 // Apply rate limiting to all routes
 app.use(security.apiLimiter);
