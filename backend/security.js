@@ -21,12 +21,18 @@ const apiLimiter = rateLimit({
 });
 
 // More strict rate limiting for authentication routes
+// More strict rate limiting for authentication routes
 const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // limit each IP to 10 login attempts per hour
+    windowMs: 1 * 60 * 1000, // Temporarily set to 1 minute for faster testing
+    max: 5, // Temporarily set to 5 attempts per minute
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many login attempts from this IP, please try again after an hour',
+    message: 'Too many login attempts from this IP, please try again after a minute.', // Updated message for testing
+    // Use a custom handler to log the IP address when the limit is exceeded
+    handler: (req, res, next, options) => {
+        console.log(`[Rate Limit Debug] Blocked request from IP: ${req.ip}`);
+        res.status(options.statusCode).send(options.message);
+    },
     // Use the forwarded IP in proxied environments like Render
     trustProxy: true
 });
