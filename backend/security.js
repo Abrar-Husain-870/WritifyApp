@@ -25,11 +25,11 @@ const apiLimiter = rateLimit({
 // More strict rate limiting for authentication routes
 // More strict rate limiting for authentication routes
 const authLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // Temporarily set to 1 minute for faster testing
-    max: 5, // Temporarily set to 5 attempts per minute
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10, // limit each IP to 10 login attempts per hour
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many login attempts from this IP, please try again after a minute.', // Updated message for testing
+    message: 'Too many login attempts from this IP, please try again after an hour',
     // The rate-limiter should use the IP address provided by Express
     trustProxy: false
 });
