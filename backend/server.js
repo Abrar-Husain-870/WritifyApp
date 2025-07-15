@@ -292,8 +292,8 @@ app.use(cors({
             callback(null, false);
         }
     },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', OPTIONS'],
+    redentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // <--- THIS IS NOW CORRECT
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
 }));
@@ -623,7 +623,7 @@ app.get('/auth/status', (req, res) => {
 });
 
 // Guest login endpoint - allows recruiters to explore the app without authentication
-app.post('/api/guest-login', security.authLimiter, (req, res) => {
+app.post('/auth/guest-login', security.authLimiter, (req, res) => { // <--- THIS IS NOW CORRECT
     // Apply CORS for this route specifically
     const origin = req.headers.origin;
     if (origin) {
