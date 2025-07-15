@@ -292,7 +292,7 @@ app.use(cors({
             callback(null, false);
         }
     },
-    redentials: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // <--- THIS IS NOW CORRECT
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
