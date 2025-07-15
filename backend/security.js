@@ -20,16 +20,13 @@ const apiLimiter = rateLimit({
     trustProxy: false
 });
 
-// More strict rate limiting for authentication routes
-// More strict rate limiting for authentication routes
-// More strict rate limiting for authentication routes
-// More strict rate limiting for authentication routes
+// More strict rate limiting for authentication routes, relaxed to handle Render cold starts
 const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // limit each IP to 10 login attempts per hour
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // Allow a burst of 20 requests to accommodate for cold starts
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many login attempts from this IP, please try again after an hour',
+    message: 'Too many login attempts from this IP, please try again after 15 minutes',
     // The rate-limiter should use the IP address provided by Express
     trustProxy: false
 });

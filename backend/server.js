@@ -270,11 +270,13 @@ app.set('trust proxy', 1);
 // Configure security headers with helmet
 security.configureHelmet(app);
 
-// Trust the first proxy in front of the app (e.g., on Render)
-app.set('trust proxy', 1);
-
 // Apply rate limiting to all routes
 app.use(security.apiLimiter);
+
+// Health check endpoint to prevent cold starts on Render
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // Apply input validation middleware
 app.use(security.validateInput);
@@ -291,7 +293,7 @@ app.use(cors({
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
 }));
@@ -621,7 +623,7 @@ app.get('/auth/status', (req, res) => {
 });
 
 // Guest login endpoint - allows recruiters to explore the app without authentication
-app.post('/auth/guest-login', security.authLimiter, (req, res) => {
+app.post('/api/guest-login', security.authLimiter, (req, res) => {
     // Apply CORS for this route specifically
     const origin = req.headers.origin;
     if (origin) {
