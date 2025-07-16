@@ -399,8 +399,6 @@ app.use(session({
     }
 }));
 
-// Apply session timeout middleware
-app.use(security.sessionTimeout);
 
 // Passport initialization
 app.use(passport.initialize());
