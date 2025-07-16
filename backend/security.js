@@ -135,6 +135,10 @@ const sessionTimeout = (req, res, next) => {
         // If inactive for more than 2 hours, destroy session
         if (inactiveTime > 2 * 60 * 60 * 1000) {
             return req.session.destroy(() => {
+                // If the request is for an auth route, redirect to login instead of sending JSON
+                if (req.originalUrl.startsWith('/auth/')) {
+                    return res.redirect('/login?error=session_expired');
+                }
                 res.status(401).json({ error: 'Session expired. Please log in again.' });
             });
         }

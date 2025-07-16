@@ -33,6 +33,12 @@ const Login: React.FC<LoginProps> = () => {
             sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             
             return; // Exit early to prevent the next block from clearing the flags
+        } else if (errorParam === 'session_expired') {
+            setError('Your session has expired. Please sign in again.');
+            clearAllCookies();
+            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            return;
         }
         
         // If there's a force parameter, maintain logout state
