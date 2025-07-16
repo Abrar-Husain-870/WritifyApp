@@ -7,6 +7,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const crypto = require('crypto');
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
+const path = require('path');
 
 // Configuration
 const ASSIGNMENT_EXPIRATION_DAYS = 7; // Assignment requests expire after 7 days
@@ -2042,6 +2043,14 @@ app.get('/auth/logout', authCors, (req, res) => {
             res.redirect(`${frontendURL}/logout-complete.html`);
         }
     });
+});
+
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// For any other request, serve the frontend's index.html file
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 5000;
