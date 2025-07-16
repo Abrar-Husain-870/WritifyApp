@@ -126,28 +126,6 @@ const validateInput = (req, res, next) => {
     next();
 };
 
-// Session timeout middleware
-const sessionTimeout = (req, res, next) => {
-    if (req.session && req.session.lastActivity) {
-        const currentTime = Date.now();
-        const inactiveTime = currentTime - req.session.lastActivity;
-        
-        // If inactive for more than 2 hours, destroy session
-        if (inactiveTime > 2 * 60 * 60 * 1000) {
-            return req.session.destroy(() => {
-                // If the request is for an auth route, redirect to login instead of sending JSON
-                if (req.originalUrl.startsWith('/auth/')) {
-                    return res.redirect('/login?error=session_expired');
-                }
-                res.status(401).json({ error: 'Session expired. Please log in again.' });
-            });
-        }
-    }
-    
-    // Update last activity time
-    req.session.lastActivity = Date.now();
-    next();
-};
 
 // Configure security headers with helmet
 const configureHelmet = (app) => {
@@ -178,6 +156,5 @@ module.exports = {
     recordFailedLogin,
     resetLoginAttempts,
     validateInput,
-    sessionTimeout,
     configureHelmet
 };

@@ -19,31 +19,19 @@ const Login: React.FC<LoginProps> = () => {
         const forceParam = params.get('force');
         const errorParam = params.get('error');
         
-        // Handle unauthorized error first
+        // Handle error and force parameters
         if (errorParam === 'unauthorized') {
             // Set error message for unauthorized emails
             setError('Only university students with .student.iul.ac.in email can sign up!');
             
             // Ensure we're completely logged out if there was an unauthorized attempt
-            // This prevents the app from treating non-university emails as logged in
             clearAllCookies();
             
             // Always set logout flags for unauthorized errors to prevent auto-login
             localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            
-            return; // Exit early to prevent the next block from clearing the flags
-        } else if (errorParam === 'session_expired') {
-            setError('Your session has expired. Please sign in again.');
-            clearAllCookies();
-            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            return;
-        }
-        
-        // If there's a force parameter, maintain logout state
-        if (forceParam === 'true') {
-            // Set/refresh logout flags
+        } else if (forceParam === 'true') {
+            // If there's a force parameter, maintain logout state
             localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             
