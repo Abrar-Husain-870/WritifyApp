@@ -286,7 +286,7 @@ if (process.env.NODE_ENV === 'production' || process.env.INIT_DB === 'true') {
 // Set up Express app
 const app = express();
 
-// Trust proxies for Render deployment
+// Trust the first proxy for secure cookies and session handling on Render
 app.set('trust proxy', 1);
 
 // Configure security headers with helmet
@@ -352,13 +352,11 @@ passport.deserializeUser(async (id, done) => {
         done(error);
     }
 });
-
 // Session configuration
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    proxy: true, // Trust the reverse proxy
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true, // Prevents client-side JS from reading the cookie
@@ -366,7 +364,6 @@ app.use(session({
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Use 'none' in production with HTTPS
     }
 }));
-
 
 // Passport initialization
 app.use(passport.initialize());
