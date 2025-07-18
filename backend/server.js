@@ -23,7 +23,6 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const crypto = require('crypto');
@@ -317,22 +316,15 @@ app.get('/favicon.ico', (req, res) => {
 // Serve frontend static files before any API or auth routes
 app.use(express.static(path.join(__dirname, '../frontend/build')));
 
-const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'http://localhost:3000'
-];
-
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-            console.error(msg);
-            return callback(new Error(msg), false);
+    origin: function(origin, callback) {
+        // Allow all Vercel domains and localhost
+        if (!origin || origin.includes('vercel.app') || origin.includes('localhost')) {
+            callback(null, true);
+        } else {
+            console.warn(`Origin ${origin} not allowed by CORS`);
+            callback(null, false);
         }
-        return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
@@ -362,23 +354,16 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // Session configuration
-// Session configuration with PostgreSQL store
-const sessionStore = new pgSession({
-    pool: pool, // Use the existing database pool
-    tableName: 'user_sessions' // Name of the session table
-});
-
 app.use(session({
-    store: sessionStore,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     proxy: true, // Trust the reverse proxy
-    cookie: {
+    cookie: { 
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true, // Prevents client-side JS from reading the cookie
         maxAge: 24 * 60 * 60 * 1000, // Session expires after 24 hours
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Use 'none' in production with HTTPS
     }
 }));
 
