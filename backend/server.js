@@ -357,6 +357,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Necessary for secure cookies behind a proxy
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true, // Prevents client-side JS from reading the cookie
