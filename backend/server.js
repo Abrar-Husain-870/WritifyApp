@@ -1,3 +1,24 @@
+require('dotenv').config();
+
+// Validate essential environment variables
+const requiredEnvVars = [
+    'DATABASE_URL',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'SESSION_SECRET',
+    'ENCRYPTION_KEY',
+    'FRONTEND_URL',
+    'GOOGLE_CALLBACK_URL'
+];
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+    console.error(`FATAL ERROR: Missing required environment variables: ${missingVars.join(', ')}`);
+    console.error('Please ensure all required variables are set in your .env file or deployment environment.');
+    process.exit(1); // Exit with a failure code
+}
+
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -24,7 +45,7 @@ const security = require('./security');
 // Encryption utilities for sensitive data
 // Use environment variable for encryption key with a fallback
 // For AES-256-CBC, the key must be exactly 32 bytes (characters)
-let rawKey = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-chars';
+let rawKey = process.env.ENCRYPTION_KEY;
 // Ensure key is exactly 32 bytes by either padding or truncating
 const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(rawKey)).digest('base64').substring(0, 32);
 const IV_LENGTH = 16; // For AES, this is always 16
@@ -373,22 +394,8 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // Session configuration
-const sessionConfig = {
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    proxy: true,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true, // Prevents client-side JS from reading the cookie
-        maxAge: 24 * 60 * 60 * 1000, // Session expires after 24 hours
-        sameSite: 'lax' // Provides some CSRF protection
-    }
-};
-
-// Set up session with enhanced security
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: { 
@@ -405,10 +412,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Add this before your passport strategy
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 
-    (process.env.NODE_ENV === 'production'
-        ? 'https://writifyapp.onrender.com/auth/google/callback'
-        : 'http://localhost:5000/auth/google/callback');
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
 
 // Function to validate university email
 const isValidUniversityEmail = (email) => {
@@ -1995,10 +1999,7 @@ app.get('/auth/logout', authCors, (req, res) => {
     isLogoutInProgress = true;
     
     // Define the frontend URL based on environment
-    const frontendURL = process.env.FRONTEND_URL || 
-        (process.env.NODE_ENV === 'production'
-            ? 'https://writified.vercel.app'
-            : 'http://localhost:3000');
+    const frontendURL = process.env.FRONTEND_URL;
     
     // Store the user ID before logout
     const userId = req.user?.id;
@@ -2051,7 +2052,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
