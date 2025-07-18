@@ -304,6 +304,9 @@ app.get('/health', (req, res) => {
 app.use(security.validateInput);
 
 app.use(express.json());
+// Serve frontend static files before any API or auth routes
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
 app.use(cors({
     origin: function(origin, callback) {
         // Allow all Vercel domains and localhost
@@ -2044,10 +2047,8 @@ app.get('/auth/logout', authCors, (req, res) => {
     });
 });
 
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-// For any other request, serve the frontend's index.html file
+// For any other request that doesn't match a static file or API route, serve the frontend's index.html file
+// This should be the last route handler
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });

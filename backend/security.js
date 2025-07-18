@@ -129,6 +129,7 @@ const validateInput = (req, res, next) => {
 
 // Configure security headers with helmet
 const configureHelmet = (app) => {
+    app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
     app.use(helmet({
         contentSecurityPolicy: {
             directives: {
