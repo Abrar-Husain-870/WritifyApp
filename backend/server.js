@@ -304,6 +304,15 @@ app.get('/health', (req, res) => {
 app.use(security.validateInput);
 
 app.use(express.json());
+
+// Handle manifest.json and other static file requests before any auth middleware
+app.get('/manifest.json', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'manifest.json'));
+});
+
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'favicon.ico'));
+});
 // Serve frontend static files before any API or auth routes
 app.use(express.static(path.join(__dirname, '../frontend/build')));
 
@@ -318,62 +327,10 @@ app.use(cors({
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // <--- THIS IS NOW CORRECT
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
 }));
-
-// CORS middleware for static files
-const staticCors = (req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Allow any origin for static files
-    next();
-};
-
-// Handle manifest.json requests
-app.get('/manifest.json', staticCors, (req, res) => {
-    res.status(200).json({
-        "short_name": "Writify",
-        "name": "Writify - Academic Writing Platform",
-        "icons": [
-            {
-                "src": "favicon.ico",
-                "sizes": "64x64 32x32 24x24 16x16",
-                "type": "image/x-icon"
-            },
-            {
-                "src": "android-chrome-192x192.png",
-                "type": "image/png",
-                "sizes": "192x192",
-                "purpose": "any maskable"
-            },
-            {
-                "src": "android-chrome-512x512.png",
-                "type": "image/png",
-                "sizes": "512x512",
-                "purpose": "any maskable"
-            }
-        ],
-        "start_url": ".",
-        "display": "standalone",
-        "theme_color": "#2563eb",
-        "background_color": "#ffffff"
-    });
-});
-
-// Handle favicon.ico requests
-app.get('/favicon.ico', staticCors, (req, res) => {
-    // Return a simple transparent 1x1 pixel ico
-    res.status(200).end();
-});
-
-// Handle android-chrome icon requests
-app.get('/android-chrome-192x192.png', staticCors, (req, res) => {
-    res.status(200).end();
-});
-
-app.get('/android-chrome-512x512.png', staticCors, (req, res) => {
-    res.status(200).end();
-});
 
 // Passport serialization
 passport.serializeUser((user, done) => {
@@ -401,6 +358,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Trust the reverse proxy
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true, // Prevents client-side JS from reading the cookie
