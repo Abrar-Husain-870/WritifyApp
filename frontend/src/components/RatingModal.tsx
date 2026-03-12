@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { API } from '../utils/api';
-import { debugLog, errorLog } from '../utils/logUtil';
-
+import { Star, X, Loader2, AlertCircle } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 interface RatingModalProps {
   isOpen: boolean;
@@ -23,6 +23,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
   userType
 }) => {
   const [rating, setRating] = useState<number>(0);
+  const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +42,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
     setError(null);
 
     try {
-      debugLog('Submitting rating with data:', {
-        rated_id: ratedUserId,
-        rating,
-        comment,
-        assignment_request_id: assignmentRequestId
-      });
-
       const response = await fetch(API.ratings.submit, {
         method: 'POST',
         headers: {
@@ -70,7 +64,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
       onRatingSubmitted();
       onClose();
     } catch (error) {
-      errorLog('Error submitting rating:', error);
       setError('Failed to submit rating. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -78,86 +71,100 @@ const RatingModal: React.FC<RatingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Rate {userType === 'client' ? 'Client' : 'Writer'}: {ratedUserName}
-          </h2>
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-card border border-border shadow-lg rounded-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">
+              Rate {userType === 'client' ? 'Client' : 'Writer'}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">Feedback for {ratedUserName}</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 focus:outline-none"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent hover:text-accent-foreground h-9 w-9"
           >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Your Rating
-            </label>
-            <div className="flex space-x-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="focus:outline-none"
-                >
-                  <svg
-                    className={`h-8 w-8 ${
-                      rating >= star ? 'text-yellow-400' : 'text-gray-300'
-                    }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-3 text-center">
+                How was your experience?
+              </label>
+              <div className="flex justify-center space-x-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
                   >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                </button>
-              ))}
+                    <Star
+                      className={cn(
+                        "h-10 w-10 transition-colors duration-200",
+                        (hoveredRating ? hoveredRating >= star : rating >= star)
+                          ? "text-yellow-400 fill-yellow-400"
+                          : "text-muted-foreground/30"
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+              <div className="text-center mt-2 h-5">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {rating === 1 && "Poor"}
+                  {rating === 2 && "Fair"}
+                  {rating === 3 && "Good"}
+                  {rating === 4 && "Very Good"}
+                  {rating === 5 && "Excellent"}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="mb-4">
-            <label htmlFor="comment" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Comment (Optional)
-            </label>
-            <textarea
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              rows={3}
-              placeholder={`Share your experience with this ${userType === 'client' ? 'client' : 'writer'}...`}
-            />
-          </div>
-
-          {error && (
-            <div className="mb-4 text-red-500 text-sm">
-              {error}
+            <div>
+              <label htmlFor="comment" className="block text-sm font-medium text-foreground mb-2">
+                Review (Optional)
+              </label>
+              <textarea
+                id="comment"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                rows={4}
+                placeholder={`Share your experience working with ${ratedUserName}...`}
+              />
             </div>
-          )}
 
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="mr-3 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-500 focus:outline-none"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Rating'}
-            </button>
-          </div>
-        </form>
+            {error && (
+              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || rating === 0}
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 disabled:opacity-50"
+              >
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Rating'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

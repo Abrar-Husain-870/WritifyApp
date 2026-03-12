@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from './Header'; // Assuming the Header component is in the same directory
-import { API } from '../utils/api'; // Correct import path for the API utility
-import { debugLog, errorLog } from '../utils/logUtil';
-
+import Header from './Header';
+import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { User, AlertTriangle, Star, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react';
+import { cn } from '../utils/cn';
+import { toast } from 'sonner';
 
-interface User {
+interface UserData {
     id: number;
     name: string;
     email: string;
@@ -27,13 +28,13 @@ const Profile: React.FC = () => {
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const navigate = useNavigate();
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<UserData | null>(null);
     const [portfolio, setPortfolio] = useState<Portfolio>({
         sample_work_image: '',
         description: ''
     });
     const [loading, setLoading] = useState(true);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const { isGuest } = useContext(GuestContext);
 
@@ -53,15 +54,7 @@ const Profile: React.FC = () => {
         })
         .then(res => {
             if (!res.ok) {
-                console.error(`Profile fetch failed with status: ${res.status}`);
-                return res.text().then(text => {
-                    try {
-                        const errorData = JSON.parse(text);
-                        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
-                    } catch (e) {
-                        throw new Error(`HTTP error! status: ${res.status}`);
-                    }
-                });
+                throw new Error(`HTTP error! status: ${res.status}`);
             }
             return res.json();
         })
@@ -74,10 +67,7 @@ const Profile: React.FC = () => {
         })
         .catch(error => {
             console.error('Error fetching profile:', error);
-            setMessage({
-                type: 'error',
-                text: 'Failed to load profile. Please try again later.'
-            });
+            toast.error('Failed to load profile. Please try again later.');
             setLoading(false);
         });
     }, [isGuest]);
@@ -85,14 +75,11 @@ const Profile: React.FC = () => {
     const handleWriterStatusUpdate = async (status: 'active' | 'busy' | 'inactive') => {
         try {
             if ((status === 'active' || status === 'busy') && (!user?.whatsapp_number || user.whatsapp_number.trim() === '')) {
-                setMessage({ 
-                    type: 'error', 
-                    text: 'Please add your WhatsApp number before setting your status to Available or Busy' 
-                });
+                toast.error('Please add your WhatsApp number before setting your status');
                 return;
             }
             
-            debugLog('Submitting profile update with data:', { writer_status: status, university_stream: user?.university_stream || '', whatsapp_number: user?.whatsapp_number || '' });
+            setIsUpdating(true);
             
             const response = await fetch(API.users.updateWriterProfile, {
                 method: 'PUT',
@@ -108,59 +95,38 @@ const Profile: React.FC = () => {
                 })
             });
 
-            debugLog('Response status:', response.status);
-            
             if (response.ok) {
                 const updatedUser = await response.json();
-                debugLog('Profile data received:', updatedUser);
                 setUser(updatedUser);
-                setMessage({ type: 'success', text: 'Writer status updated successfully!' });
+                toast.success('Profile updated successfully!');
             } else {
                 const errorText = await response.text();
-                errorLog('Profile update error:', errorText);
                 try {
                     const error = JSON.parse(errorText);
-                    setMessage({ type: 'error', text: error.error || 'Failed to update writer status' });
+                    toast.error(error.error || 'Failed to update profile');
                 } catch (e) {
-                    setMessage({ type: 'error', text: 'Failed to update writer status' });
+                    toast.error('Failed to update profile');
                 }
             }
         } catch (error) {
-            errorLog('Error updating writer status:', error);
-            setMessage({ type: 'error', text: 'Failed to update writer status' });
+            toast.error('Failed to update profile');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
-    // Function to validate if a URL is likely an image URL
     const isValidImageUrl = (url: string): boolean => {
         if (!url) return false;
-        
-        // Check for common image extensions
         const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
         const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext));
-        
-        // Check for known image hosting domains
         const imageHostingDomains = [
-            // Common image hosting services
             'imagekit.io', 'imgur.com', 'i.imgur.com', 'ibb.co', 'i.ibb.co', 'postimg.cc',
             'cloudinary.com', 'res.cloudinary.com', 'flickr.com', 'imgbb.com',
-            
-            // Cloud storage services
             'drive.google.com', 'dropbox.com', 'dl.dropboxusercontent.com', 
-            'onedrive.live.com', '1drv.ms',
-            
-            // Additional image hosting services
-            'freeimage.host', 'iili.io', 'imgbox.com', 'pasteboard.co',
-            'tinypic.com', 'photobucket.com', 'postimages.org', 'imgpile.com',
-            'snipboard.io', 'imgtr.ee', 'pixhost.to', 'picr.de'
+            'onedrive.live.com', '1drv.ms', 'freeimage.host', 'iili.io', 'imgbox.com'
         ];
         const isFromImageHost = imageHostingDomains.some(domain => url.toLowerCase().includes(domain));
-        
-        // Special case for Google Drive URLs with export=download or export=view
         const isGoogleDriveImage = url.includes('drive.google.com/uc?export=');
-        
-        // If it's from a known image host or a special case URL, we'll trust it
-        // Otherwise, it should have a valid image extension
         return isFromImageHost || isGoogleDriveImage || hasImageExtension;
     };
     
@@ -169,99 +135,57 @@ const Profile: React.FC = () => {
         
         let imageUrl = portfolio.sample_work_image;
         if (!imageUrl) {
-            setMessage({ type: 'error', text: 'Please provide an image URL' });
+            toast.error('Please provide an image URL');
             return;
         }
         
-        // Process various URL types
         try {
-            // Google Drive handling
             if (imageUrl.includes('drive.google.com')) {
-                // Extract file ID from various Google Drive URL formats
                 let fileId = null;
-                
-                // Format: https://drive.google.com/file/d/FILE_ID/view
                 if (imageUrl.includes('/file/d/')) {
-                    const fileIdMatch = imageUrl.match(/\/d\/([^/\?]+)/);
-                    if (fileIdMatch && fileIdMatch[1]) {
-                        fileId = fileIdMatch[1];
-                    }
-                } 
-                // Format: https://drive.google.com/open?id=FILE_ID
-                else if (imageUrl.includes('open?id=')) {
+                    const fileIdMatch = imageUrl.match(/\/d\/([^/?]+)/);
+                    if (fileIdMatch && fileIdMatch[1]) fileId = fileIdMatch[1];
+                } else if (imageUrl.includes('open?id=')) {
+                    const urlObj = new URL(imageUrl);
+                    fileId = urlObj.searchParams.get('id');
+                } else if (imageUrl.includes('uc?') && imageUrl.includes('id=')) {
                     const urlObj = new URL(imageUrl);
                     fileId = urlObj.searchParams.get('id');
                 }
-                // Format: https://drive.google.com/uc?export=view&id=FILE_ID
-                else if (imageUrl.includes('uc?') && imageUrl.includes('id=')) {
-                    const urlObj = new URL(imageUrl);
-                    fileId = urlObj.searchParams.get('id');
-                }
-                
                 if (fileId) {
-                    // Use Google's own proxy service to avoid CORS issues
-                    // This is a more reliable solution than direct Google Drive links
                     imageUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
-                    debugLog('Converted Google Drive URL to lh3 format:', imageUrl);
                 }
-            } 
-            // Dropbox handling
-            else if (imageUrl.includes('dropbox.com')) {
-                // Convert dropbox share links to direct links
+            } else if (imageUrl.includes('dropbox.com')) {
                 imageUrl = imageUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
                 imageUrl = imageUrl.replace('?dl=0', '').replace('?dl=1', '');
-                debugLog('Converted Dropbox URL:', imageUrl);
-            } 
-            // OneDrive handling
-            else if (imageUrl.includes('1drv.ms') || imageUrl.includes('onedrive.live.com')) {
-                debugLog('OneDrive URL detected. Using as is:', imageUrl);
-            } 
-            // Imgur handling
-            else if (imageUrl.includes('imgur.com') && !imageUrl.includes('i.imgur.com')) {
-                // Convert regular imgur links to direct image links if needed
+            } else if (imageUrl.includes('imgur.com') && !imageUrl.includes('i.imgur.com')) {
                 if (!imageUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
                     imageUrl = imageUrl.replace('imgur.com', 'i.imgur.com') + '.jpg';
-                    debugLog('Converted Imgur URL:', imageUrl);
                 }
-            }
-            // ImgBB handling (ibb.co)
-            else if (imageUrl.includes('ibb.co')) {
-                // ibb.co links are already direct, but make sure we're getting the image
+            } else if (imageUrl.includes('ibb.co')) {
                 if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                    // If it's a sharing page URL, try to extract the image ID
-                    const ibbMatch = imageUrl.match(/ibb\.co\/([^/\?]+)/);
+                    const ibbMatch = imageUrl.match(/ibb\.co\/([^/?]+)/);
                     if (ibbMatch && ibbMatch[1]) {
-                        // Convert to direct image URL format
                         imageUrl = `https://i.ibb.co/${ibbMatch[1]}/image.jpg`;
-                        debugLog('Converted ImgBB URL:', imageUrl);
                     }
                 }
-            }
-            // FreeImage.host handling
-            else if (imageUrl.includes('freeimage.host')) {
-                // Convert viewing URL to direct image URL
+            } else if (imageUrl.includes('freeimage.host')) {
                 if (imageUrl.includes('/i/')) {
-                    const imageIdMatch = imageUrl.match(/\/i\/([^/\?]+)/);
+                    const imageIdMatch = imageUrl.match(/\/i\/([^/?]+)/);
                     if (imageIdMatch && imageIdMatch[1]) {
                         imageUrl = `https://iili.io/${imageIdMatch[1]}.jpg`;
-                        debugLog('Converted FreeImage.host URL:', imageUrl);
                     }
                 }
             }
         } catch (error) {
-            debugLog('Error processing image URL:', error);
-            // Continue with the original URL if there's an error in processing
+            // Ignore processing errors and use original URL
         }
         
-        // Validate the URL is likely an image
         if (!isValidImageUrl(imageUrl)) {
-            setMessage({ 
-                type: 'error', 
-                text: 'The URL may not be a valid image. Please ensure it points directly to an image file.'
-            });
-            // We'll still continue with the submission, but warn the user
+            toast.error('The URL may not be a valid image. Please ensure it points directly to an image file.');
         }
         
+        setIsUpdating(true);
         try {
             const response = await fetch(API.users.updatePortfolio, {
                 method: 'POST',
@@ -277,18 +201,19 @@ const Profile: React.FC = () => {
             });
 
             if (response.ok) {
-                setMessage({ type: 'success', text: 'Portfolio updated successfully!' });
+                toast.success('Portfolio updated successfully!');
                 setPortfolio(prevState => ({
                     ...prevState,
                     sample_work_image: imageUrl
                 }));
             } else {
                 const error = await response.json();
-                setMessage({ type: 'error', text: error.error || 'Failed to update portfolio' });
+                toast.error(error.error || 'Failed to update portfolio');
             }
         } catch (error) {
-            console.error('Error updating portfolio:', error);
-            setMessage({ type: 'error', text: 'Failed to update portfolio' });
+            toast.error('Failed to update portfolio');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -309,7 +234,6 @@ const Profile: React.FC = () => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Error deleting account:', errorText);
                 try {
                     const error = JSON.parse(errorText);
                     setDeleteError(error.error || 'Failed to delete account');
@@ -319,39 +243,38 @@ const Profile: React.FC = () => {
                 return;
             }
 
-            console.log('Account deletion successful, redirecting to confirmation page');
             navigate('/account-deleted');
         } catch (error) {
-            console.error('Error deleting account:', error);
             setDeleteError('Failed to delete account. Please try again later.');
         }
     };
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                <p className="mt-4 text-gray-600">Loading profile...</p>
+            <div className="min-h-screen bg-background flex flex-col">
+                <Header title="My Profile" />
+                <div className="flex-1 flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
             </div>
         );
     }
 
     if (isGuest) {
         return (
-            <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg p-8">
-                <div className="text-center py-12">
-                    <div className="mx-auto w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+            <div className="min-h-screen bg-background flex flex-col">
+                <Header title="My Profile" />
+                <div className="flex-1 max-w-3xl w-full mx-auto p-6 flex flex-col items-center justify-center text-center">
+                    <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mb-6">
+                        <User className="h-10 w-10 text-yellow-600 dark:text-yellow-500" />
                     </div>
-                    <h2 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">Guest Mode</h2>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                    <h2 className="text-2xl font-bold text-foreground mb-2">Guest Mode</h2>
+                    <p className="text-muted-foreground max-w-md mb-8">
                         You are currently browsing as a guest. To access your profile and use all features, please sign in with your university email address.
                     </p>
                     <button
                         onClick={() => navigate('/login')}
-                        className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-8"
                     >
                         Sign In
                     </button>
@@ -360,283 +283,250 @@ const Profile: React.FC = () => {
         );
     }
 
-    if (!user) {
-        return <div>User not found</div>;
-    }
+    if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-background flex flex-col">
             <Header title="My Profile" />
             
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                {message && (
-                    <div className={`p-4 ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {message.text}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                    <div className="space-y-8">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-                            <div className="flex items-center space-x-4 mb-6">
-                                <img
-                                    src={user.profile_picture}
-                                    alt={user.name}
-                                    className="h-16 w-16 rounded-full"
-                                />
-                                <div>
-                                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{user.name}</h2>
-                                    <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{user?.email}</dd>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">University Stream</label>
-                                    <input
-                                        type="text"
-                                        value={user.university_stream || ''}
-                                        onChange={(e) => setUser({ ...user, university_stream: e.target.value })}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left Column: Personal Info & Settings */}
+                    <div className="lg:col-span-5 space-y-8">
+                        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                            <div className="p-6">
+                                <div className="flex items-center gap-5 mb-8">
+                                    <img
+                                        src={user.profile_picture}
+                                        alt={user.name}
+                                        className="h-20 w-20 rounded-full border-2 border-border object-cover"
                                     />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">WhatsApp Number</label>
-                                    <input
-                                        type="tel"
-                                        value={user.whatsapp_number || ''}
-                                        onChange={(e) => setUser({ ...user, whatsapp_number: e.target.value })}
-                                        placeholder="+91XXXXXXXXXX"
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    />
-                                    {!user.whatsapp_number && (
-                                        <p className="mt-1 text-sm text-amber-600">
-                                            * Required to set your status as Available or Busy
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Writer Status</label>
-                                    <div className="flex space-x-4">
-                                        <button
-                                            onClick={() => handleWriterStatusUpdate('active')}
-                                            disabled={!user.whatsapp_number || user.whatsapp_number.trim() === ''}
-                                            className={`px-4 py-2 rounded-md ${
-                                                user.writer_status === 'active'
-                                                    ? 'bg-green-600 text-white'
-                                                    : !user.whatsapp_number || user.whatsapp_number.trim() === ''
-                                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Available
-                                        </button>
-                                        <button
-                                            onClick={() => handleWriterStatusUpdate('busy')}
-                                            disabled={!user.whatsapp_number || user.whatsapp_number.trim() === ''}
-                                            className={`px-4 py-2 rounded-md ${
-                                                user.writer_status === 'busy'
-                                                    ? 'bg-red-600 text-white'
-                                                    : !user.whatsapp_number || user.whatsapp_number.trim() === ''
-                                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Busy
-                                        </button>
-                                        <button
-                                            onClick={() => handleWriterStatusUpdate('inactive')}
-                                            className={`px-4 py-2 rounded-md ${
-                                                user.writer_status === 'inactive'
-                                                    ? 'bg-gray-600 text-white'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Inactive
-                                        </button>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
+                                        <p className="text-sm text-muted-foreground">{user.email}</p>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        {user.rating > 0 && (
-                            <div className="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ratings & Reviews</h3>
-                                <div className="flex items-center space-x-2">
-                                    <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                    <span className="text-xl font-semibold text-gray-900 dark:text-white">{parseFloat(String(user.rating) || '0').toFixed(1)}</span>
-                                    <span className="text-gray-500 dark:text-gray-400">({user.total_ratings || 0} reviews)</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Portfolio Section */}
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Writer Portfolio</h3>
-                        <form onSubmit={handlePortfolioUpdate} className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">Sample Work Image URL</label>
-                                <input
-                                    type="url"
-                                    value={portfolio.sample_work_image}
-                                    onChange={(e) => setPortfolio(prev => ({ ...prev, sample_work_image: e.target.value }))}
-                                    placeholder="https://example.com/image.jpg"
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                />
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    You can use any image hosting website to showcase your portfolio work.
-                                </p>
-                                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm">
-                                    <p className="font-medium text-blue-700 dark:text-blue-200">Supported Image Hosting Services:</p>
-                                    <ul className="list-disc pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
-                                        <li><strong>Google Drive:</strong> Upload your image, right-click and select "Get link", set to "Anyone with the link", then copy and paste the link</li>
-                                        <li><strong>ImageKit:</strong> <a href="https://imagekit.io/tools/free-image-hosting/" target="_blank" rel="noopener noreferrer" className="underline">Free image hosting tool</a></li>
-                                        <li><strong>ImgBB:</strong> <a href="https://imgbb.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a>, then use the "Direct link" URL</li>
-                                        <li><strong>FreeImage.host:</strong> <a href="https://freeimage.host/" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
-                                        <li><strong>Imgur:</strong> <a href="https://imgur.com/upload" target="_blank" rel="noopener noreferrer" className="underline">Upload here</a> and copy the direct image URL</li>
-                                    </ul>
-                                    <p className="mt-2 text-blue-700 dark:text-blue-200 font-medium">For Google Drive images:</p>
-                                    <ol className="list-decimal pl-5 mt-1 text-blue-600 dark:text-blue-300 space-y-1">
-                                        <li>Upload your image to Google Drive</li>
-                                        <li>Click on the share icon (person with + symbol) in the top right corner</li>
-                                        <li>In the sharing settings, change from "Restricted" to "Anyone with the link"</li>
-                                        <li>Click "Copy link" to copy the sharing URL</li>
-                                        <li>Paste the link here - our system will automatically convert it</li>
-                                    </ol>
-                                </div>
-                                {portfolio.sample_work_image && (
-                                    <div className="mt-4 border p-3 rounded-md">
-                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image Preview:</p>
-                                        <img 
-                                            src={portfolio.sample_work_image} 
-                                            alt="Preview" 
-                                            className="max-h-60 rounded border border-gray-300"
-                                            onLoad={() => setMessage({ type: 'success', text: 'Image loaded successfully!' })}
-                                            onError={(e) => {
-                                                // Try to detect if this is a Google Drive URL that failed
-                                                const imgUrl = portfolio.sample_work_image;
-                                                if (imgUrl.includes('drive.google.com') || imgUrl.includes('lh3.googleusercontent.com')) {
-                                                    // Extract the file ID
-                                                    let fileId = null;
-                                                    if (imgUrl.includes('/d/')) {
-                                                        const match = imgUrl.match(/\/d\/([^/\?]+)/);
-                                                        if (match && match[1]) fileId = match[1];
-                                                    } else if (imgUrl.includes('id=')) {
-                                                        const urlObj = new URL(imgUrl);
-                                                        fileId = urlObj.searchParams.get('id');
-                                                    }
-                                                    
-                                                    if (fileId) {
-                                                        // Try an alternative format
-                                                        const alternativeUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-                                                        debugLog('Trying alternative Google Drive URL:', alternativeUrl);
-                                                        setMessage({ type: 'error', text: 'Trying alternative Google Drive format...' });
-                                                        (e.target as HTMLImageElement).src = alternativeUrl;
-                                                        return;
-                                                    }
-                                                }
-                                                
-                                                // If not a Google Drive URL or fallback failed
-                                                const target = e.target as HTMLImageElement;
-                                                target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20200%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22200%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22150%22%20y%3D%22110%22%3EInvalid%20Image%20URL%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
-                                                target.onerror = null; // Prevent infinite error loop
-                                            }}
-                                            loading="lazy"
+                                <div className="space-y-5">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1.5">University Stream</label>
+                                        <input
+                                            type="text"
+                                            value={user.university_stream || ''}
+                                            onChange={(e) => setUser({ ...user, university_stream: e.target.value })}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            placeholder="e.g. B.Tech CSE"
                                         />
                                     </div>
-                                )}
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-400">Description</label>
-                                <textarea
-                                    value={portfolio.description}
-                                    onChange={(e) => setPortfolio(prev => ({ ...prev, description: e.target.value }))}
-                                    rows={4}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    placeholder="Tell others about your writing experience and expertise..."
-                                />
-                            </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1.5">WhatsApp Number</label>
+                                        <input
+                                            type="tel"
+                                            value={user.whatsapp_number || ''}
+                                            onChange={(e) => setUser({ ...user, whatsapp_number: e.target.value })}
+                                            placeholder="+91XXXXXXXXXX"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        />
+                                        {!user.whatsapp_number && (
+                                            <p className="mt-2 text-xs text-amber-600 dark:text-amber-500 flex items-center">
+                                                <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                                                Required to set status as Available or Busy
+                                            </p>
+                                        )}
+                                    </div>
 
-                            <button
-                                type="submit"
-                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                                Update Portfolio
-                            </button>
-                        </form>
+                                    <div className="pt-2">
+                                        <label className="block text-sm font-medium text-foreground mb-3">Writer Status</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <button
+                                                onClick={() => handleWriterStatusUpdate('active')}
+                                                disabled={!user.whatsapp_number || isUpdating}
+                                                className={cn(
+                                                    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3",
+                                                    user.writer_status === 'active'
+                                                        ? "bg-green-600 text-white hover:bg-green-700"
+                                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                                                    (!user.whatsapp_number || isUpdating) && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                Available
+                                            </button>
+                                            <button
+                                                onClick={() => handleWriterStatusUpdate('busy')}
+                                                disabled={!user.whatsapp_number || isUpdating}
+                                                className={cn(
+                                                    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3",
+                                                    user.writer_status === 'busy'
+                                                        ? "bg-amber-600 text-white hover:bg-amber-700"
+                                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                                                    (!user.whatsapp_number || isUpdating) && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                Busy
+                                            </button>
+                                            <button
+                                                onClick={() => handleWriterStatusUpdate('inactive')}
+                                                disabled={isUpdating}
+                                                className={cn(
+                                                    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3",
+                                                    user.writer_status === 'inactive'
+                                                        ? "bg-muted-foreground text-white hover:bg-muted-foreground/90"
+                                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                                                    isUpdating && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                Inactive
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <button
+                                        onClick={() => handleWriterStatusUpdate(user.writer_status)}
+                                        disabled={isUpdating}
+                                        className="w-full mt-4 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 disabled:opacity-50"
+                                    >
+                                        {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Save Profile Info
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {user.rating > 0 && (
+                                <div className="border-t border-border bg-muted/20 p-6 flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-medium text-foreground">Writer Rating</h3>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Based on {user.total_ratings} reviews</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-background px-3 py-1.5 rounded-full border border-border">
+                                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                        <span className="font-semibold text-sm">{parseFloat(String(user.rating)).toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Danger Zone */}
+                        <div className="bg-card rounded-xl border border-destructive/20 shadow-sm overflow-hidden">
+                            <div className="p-6">
+                                <h3 className="text-lg font-semibold text-destructive flex items-center gap-2 mb-4">
+                                    <AlertTriangle className="h-5 w-5" /> Danger Zone
+                                </h3>
+                                <p className="text-sm text-muted-foreground mb-6">
+                                    Permanently delete your account and all associated data. This action cannot be undone.
+                                </p>
+                                <button
+                                    onClick={() => setShowDeleteConfirmation(true)}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-destructive bg-background hover:bg-destructive hover:text-destructive-foreground h-10 px-4 text-destructive w-full sm:w-auto"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Portfolio */}
+                    <div className="lg:col-span-7">
+                        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden h-full">
+                            <div className="p-6">
+                                <div className="flex items-center gap-2 mb-6">
+                                    <ImageIcon className="h-5 w-5 text-primary" />
+                                    <h3 className="text-xl font-semibold text-foreground">Writer Portfolio</h3>
+                                </div>
+                                
+                                <form onSubmit={handlePortfolioUpdate} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1.5">Sample Work Image URL</label>
+                                        <input
+                                            type="url"
+                                            value={portfolio.sample_work_image}
+                                            onChange={(e) => setPortfolio(prev => ({ ...prev, sample_work_image: e.target.value }))}
+                                            placeholder="https://example.com/image.jpg"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        />
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                            Provide a direct link to an image showcasing your handwriting or previous work.
+                                        </p>
+                                    </div>
+
+                                    {portfolio.sample_work_image && (
+                                        <div className="rounded-lg border border-border overflow-hidden bg-muted/10 relative group">
+                                            <div className="absolute inset-0 bg-background/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                <span className="text-sm font-medium px-3 py-1.5 bg-background rounded-full shadow-sm border border-border">Image Preview</span>
+                                            </div>
+                                            <img 
+                                                src={portfolio.sample_work_image} 
+                                                alt="Portfolio Preview" 
+                                                className="w-full h-64 object-cover"
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20200%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22400%22%20height%3D%22200%22%20fill%3D%22%23f3f4f6%22%3E%3C%2Frect%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%3EInvalid%20Image%20URL%3C%2Ftext%3E%3C%2Fsvg%3E';
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1.5">Description</label>
+                                        <textarea
+                                            value={portfolio.description}
+                                            onChange={(e) => setPortfolio(prev => ({ ...prev, description: e.target.value }))}
+                                            rows={6}
+                                            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                                            placeholder="Describe your writing experience, preferred subjects, and expertise..."
+                                        />
+                                    </div>
+
+                                    <div className="pt-4 border-t border-border">
+                                        <button
+                                            type="submit"
+                                            disabled={isUpdating}
+                                            className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 disabled:opacity-50"
+                                        >
+                                            {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                            Update Portfolio
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
             
-            {/* Account Settings Section */}
-            <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-12">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Account Settings</h3>
-                    
-                    <div className="space-y-6">
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                            <p className="text-blue-700 dark:text-blue-200">
-                                <span className="font-medium">Tip:</span> Getting unwanted assignment requests? Try switching your writing status to "Inactive".
-                            </p>
-                        </div>
-                        
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Danger Zone</h4>
-                            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md border border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-start space-x-3">
-                                        <svg className="h-6 w-6 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        <div>
-                                            <h5 className="text-md font-medium text-gray-900 dark:text-white">Delete Account</h5>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                Permanently delete your account and all associated data. This action cannot be undone.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowDeleteConfirmation(true)}
-                                        className="px-4 py-2 rounded-md border border-red-300 text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                                    >
-                                        Delete Account
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
+            {/* Delete Confirmation Modal */}
             {showDeleteConfirmation && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Account Deletion</h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete your account? This action is irreversible.</p>
-                        {deleteError && (
-                            <div className="mb-6 p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200">
-                                {deleteError}
+                <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-card border border-border shadow-lg rounded-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 text-destructive mb-4">
+                                <AlertTriangle className="h-6 w-6" />
+                                <h3 className="text-lg font-semibold">Delete Account</h3>
                             </div>
-                        )}
-                        <div className="flex space-x-4">
-                            <button
-                                onClick={() => setShowDeleteConfirmation(false)}
-                                className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleDeleteAccount}
-                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                            >
-                                Delete Account
-                            </button>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently remove all your data, assignments, and portfolio.
+                            </p>
+                            
+                            {deleteError && (
+                                <div className="mb-6 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+                                    {deleteError}
+                                </div>
+                            )}
+                            
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+                                <button
+                                    onClick={() => setShowDeleteConfirmation(false)}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4"
+                                >
+                                    Yes, delete my account
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

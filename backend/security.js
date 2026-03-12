@@ -12,23 +12,19 @@ const loginAttempts = new Map();
 // Rate limiting middleware to prevent abuse
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    max: process.env.NODE_ENV === 'production' ? 100 : 1000, // limit each IP to 100 requests per windowMs in prod, 1000 in dev
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes',
-    // The rate-limiter should use the IP address provided by Express
-    trustProxy: false
+    message: 'Too many requests from this IP, please try again after 15 minutes'
 });
 
 // More strict rate limiting for authentication routes, relaxed to handle Render cold starts
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20, // Allow a burst of 20 requests to accommodate for cold starts
+    max: process.env.NODE_ENV === 'production' ? 20 : 200, // Allow a burst of 20 requests to accommodate for cold starts
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many login attempts from this IP, please try again after 15 minutes',
-    // The rate-limiter should use the IP address provided by Express
-    trustProxy: false
+    message: 'Too many login attempts from this IP, please try again after 15 minutes'
 });
 
 // Function to check if account is locked

@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -20,35 +21,32 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // You can log the error to a custom error reporting service
     console.error('Error caught by ErrorBoundary:', error);
     console.error('Component stack:', errorInfo.componentStack);
-    
-    // Prevent any external error reporting that might cause CORS issues
-    // Using type assertion to avoid TypeScript errors
     (error as any).preventDefault = () => true;
   }
 
   render(): ReactNode {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
       return this.props.fallback || (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-          <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md">
-            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Something went wrong</h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
-              The application encountered an error. Please try refreshing the page.
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <div className="text-center p-8 bg-card border border-border rounded-xl shadow-lg max-w-md w-full flex flex-col items-center">
+            <div className="h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
+                <AlertTriangle className="h-8 w-8 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
+            <p className="text-muted-foreground mb-8">
+              The application encountered an unexpected error. Please try refreshing the page.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-11 px-8 w-full"
             >
-              Refresh Page
+              <RefreshCw className="mr-2 h-4 w-4" /> Refresh Page
             </button>
           </div>
         </div>

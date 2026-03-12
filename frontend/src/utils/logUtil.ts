@@ -2,7 +2,7 @@
  * Utility to control logging throughout the application
  * Set to false in production to disable all debug logs
  */
-export const DEBUG_MODE = false;
+export const DEBUG_MODE = process.env.NODE_ENV !== 'production';
 
 /**
  * Controlled console logging that only outputs when DEBUG_MODE is true
@@ -12,9 +12,9 @@ export const DEBUG_MODE = false;
 export const debugLog = (message: string, data?: any): void => {
   if (DEBUG_MODE) {
     if (data) {
-      console.log(message, data);
+      console.log(`[DEBUG] ${new Date().toISOString()} - ${message}`, data);
     } else {
-      console.log(message);
+      console.log(`[DEBUG] ${new Date().toISOString()} - ${message}`);
     }
   }
 };
@@ -25,9 +25,11 @@ export const debugLog = (message: string, data?: any): void => {
  * @param error The error object
  */
 export const errorLog = (message: string, error?: any): void => {
+  const timestamp = new Date().toISOString();
   if (error) {
-    console.error(message, error);
+    console.error(`[ERROR] ${timestamp} - ${message}`, error);
+    // Here you could also send the error to a logging service like Sentry or LogRocket
   } else {
-    console.error(message);
+    console.error(`[ERROR] ${timestamp} - ${message}`);
   }
 };

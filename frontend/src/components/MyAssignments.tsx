@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 
 import Header from './Header';
 import RatingModal from './RatingModal';
-import { debugLog, errorLog } from '../utils/logUtil';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
+import { Loader2, AlertCircle, FileText, CheckCircle2, Star, User, IndianRupee, Clock, Calendar, FileDigit, PlusCircle, Search, Paperclip } from 'lucide-react';
+import { cn } from '../utils/cn';
+import { Skeleton } from './ui/Skeleton';
 
-interface User {
+interface UserData {
   id: number;
   name: string;
   email: string;
@@ -20,8 +22,8 @@ interface User {
 interface Assignment {
   id: number;
   request_id: number;
-  writer: User | null;
-  client: User;
+  writer: UserData | null;
+  client: UserData;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   created_at: string;
   completed_at: string | null;
@@ -34,6 +36,7 @@ interface Assignment {
   has_rated_writer: boolean;
   has_rated_client: boolean;
   unique_id?: string;
+  attachment_url?: string;
 }
 
 const MyAssignments: React.FC = () => {
@@ -55,10 +58,8 @@ const MyAssignments: React.FC = () => {
         setLoading(true);
         
         if (isGuest) {
-          // For guest users, generate sample anonymized data
           setUserRole('guest');
           
-          // Create sample assignments with anonymized data
           const sampleAssignments: Assignment[] = [
             {
               id: 1001,
@@ -85,7 +86,7 @@ const MyAssignments: React.FC = () => {
               completed_at: null,
               course_name: 'Introduction to Computer Science',
               course_code: 'CS101',
-              assignment_type: 'Essay',
+              assignment_type: 'class_assignment',
               num_pages: 5,
               deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
               estimated_cost: 50,
@@ -117,7 +118,7 @@ const MyAssignments: React.FC = () => {
               completed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
               course_name: 'Advanced Database Systems',
               course_code: 'CS305',
-              assignment_type: 'Research Paper',
+              assignment_type: 'lab_files',
               num_pages: 10,
               deadline: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
               estimated_cost: 120,
@@ -127,15 +128,7 @@ const MyAssignments: React.FC = () => {
             {
               id: 1003,
               request_id: 2003,
-              writer: {
-                id: 3003,
-                name: 'Anonymous Writer',
-                email: 'writer3@example.com',
-                profile_picture: null,
-                rating: 4.6,
-                total_ratings: 15,
-                whatsapp_number: '**********'
-              },
+              writer: null,
               client: {
                 id: 4003,
                 name: 'Guest',
@@ -149,7 +142,7 @@ const MyAssignments: React.FC = () => {
               completed_at: null,
               course_name: 'Marketing Principles',
               course_code: 'MKT201',
-              assignment_type: 'Case Study',
+              assignment_type: 'workshop_files',
               num_pages: 7,
               deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
               estimated_cost: 70,
@@ -163,7 +156,6 @@ const MyAssignments: React.FC = () => {
           return;
         }
         
-        // For authenticated users, fetch real data
         const response = await fetch(API.assignments.my, {
           credentials: 'include',
           headers: {
@@ -173,7 +165,6 @@ const MyAssignments: React.FC = () => {
         
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            errorLog('Authentication error');
             navigate('/login');
             return;
           }
@@ -181,12 +172,10 @@ const MyAssignments: React.FC = () => {
         }
         
         const data = await response.json();
-        debugLog('Assignments data:', data);
         setAssignments(data.assignments || []);
         setUserRole(data.role);
         setLoading(false);
       } catch (err) {
-        errorLog('Error fetching assignments:', err);
         setError('Failed to load assignments. Please try again later.');
         setLoading(false);
       }
@@ -206,7 +195,6 @@ const MyAssignments: React.FC = () => {
         throw new Error('Failed to complete assignment');
       }
 
-      // Update the assignment status in the local state
       setAssignments(prevAssignments => 
         prevAssignments.map(assignment => 
           assignment.id === assignmentId 
@@ -215,7 +203,6 @@ const MyAssignments: React.FC = () => {
         )
       );
     } catch (error) {
-      console.error('Error completing assignment:', error);
       setError('Failed to complete assignment. Please try again.');
     }
   };
@@ -228,7 +215,6 @@ const MyAssignments: React.FC = () => {
   const handleRatingSubmitted = () => {
     if (!selectedAssignment) return;
     
-    // Update the local state to reflect that the user has rated
     setAssignments(prevAssignments => 
       prevAssignments.map(assignment => {
         if (assignment.id === selectedAssignment.id) {
@@ -244,10 +230,7 @@ const MyAssignments: React.FC = () => {
   };
 
   const formatDate = (dateString: string | null | undefined) => {
-    // If dateString is null or undefined, use current date as fallback
-    // This ensures we don't show "N/A" or "Jan 1, 1970" for assignments that exist but don't have a date
     if (!dateString) {
-      // For created_at dates that are missing, use a recent date instead of showing N/A
       return new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -255,14 +238,9 @@ const MyAssignments: React.FC = () => {
       });
     }
     
-    // Try to parse the date
     const date = new Date(dateString);
     
-    // Check if the date is valid (not Jan 1, 1970 or Invalid Date)
     if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
-      // Try different date formats
-      
-      // Try parsing ISO format without timezone
       if (dateString.includes('T')) {
         const isoDate = new Date(dateString.split('T')[0]);
         if (!isNaN(isoDate.getTime())) {
@@ -274,7 +252,6 @@ const MyAssignments: React.FC = () => {
         }
       }
       
-      // Try parsing numeric timestamp
       if (!isNaN(Number(dateString))) {
         const milliseconds = parseInt(dateString);
         const timestampDate = new Date(milliseconds);
@@ -288,7 +265,6 @@ const MyAssignments: React.FC = () => {
         }
       }
       
-      // If all parsing attempts fail, use current date as fallback
       return new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -296,7 +272,6 @@ const MyAssignments: React.FC = () => {
       });
     }
     
-    // If date is valid, format it
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -305,7 +280,6 @@ const MyAssignments: React.FC = () => {
   };
 
   const getRatingButtonText = (assignment: Assignment) => {
-    // Don't show rating button for pending assignments
     if (!assignment.writer) {
       return 'Pending Writer';
     }
@@ -319,13 +293,11 @@ const MyAssignments: React.FC = () => {
   };
 
   const isRatingDisabled = (assignment: Assignment) => {
-    // Disable rating if no writer assigned or already rated
     return !assignment.writer || 
            (userRole === 'client' && assignment.has_rated_writer) || 
            (userRole === 'writer' && assignment.has_rated_client);
   };
 
-  // Helper function to safely format a rating
   const formatRating = (rating: any): string => {
     if (rating === null || rating === undefined) return '0.0';
     if (typeof rating === 'number') return rating.toFixed(1);
@@ -356,185 +328,245 @@ const MyAssignments: React.FC = () => {
       alert('WhatsApp number updated successfully! Please refresh the page.');
       setShowWhatsAppModal(false);
     } catch (error) {
-      console.error('Error updating WhatsApp number:', error);
       alert('Failed to update WhatsApp number. Please try again.');
     } finally {
       setUpdatingWhatsApp(false);
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</span>;
+      case 'cancelled':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800"><AlertCircle className="w-3 h-3 mr-1" /> Cancelled</span>;
+      case 'pending':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800"><Clock className="w-3 h-3 mr-1" /> Pending</span>;
+      default:
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> In Progress</span>;
+    }
+  };
+
+  const formatAssignmentType = (type: string) => {
+    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header title="My Assignments" />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 dark:border-blue-400"></div>
+          <div className="space-y-6">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <div className="grid grid-cols-1 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card rounded-xl border border-border overflow-hidden flex flex-col md:flex-row">
+                  <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border space-y-4">
+                    <div className="flex gap-2 mb-2">
+                      <Skeleton className="h-5 w-24 rounded" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </div>
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-5 w-32 rounded" />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </div>
+                  <div className="p-6 md:w-80 flex flex-col bg-muted/10">
+                    <Skeleton className="h-4 w-24 mb-4" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                    <div className="mt-auto">
+                      <Skeleton className="h-9 w-full rounded-md" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : error ? (
-          <div className="text-center py-10">
-            <p className="text-red-500 dark:text-red-400">{error}</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Assignments</h3>
+            <p className="text-muted-foreground mb-6">{error}</p>
             <button 
-              onClick={() => window.location.reload()} 
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={() => window.location.reload()} 
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-6"
             >
-              Retry
+                Try Again
             </button>
           </div>
         ) : assignments.length === 0 ? (
-          <div className="text-center py-16">
-            <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No assignments found</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {userRole === 'client' 
-                ? "You haven't created any assignment requests yet." 
-                : "You haven't accepted any assignments yet."}
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={() => navigate(userRole === 'client' ? '/create-assignment' : '/browse-requests')}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                {userRole === 'client' ? 'Create Assignment Request' : 'Browse Requests'}
-              </button>
+          <div className="flex flex-col items-center justify-center py-24 text-center bg-card/50 rounded-3xl border border-border border-dashed relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative z-10">
+                <FileText className="h-10 w-10 text-primary" />
             </div>
+            <h3 className="text-2xl font-bold text-foreground mb-3 relative z-10">No assignments found</h3>
+            <p className="text-lg text-muted-foreground mb-8 max-w-md relative z-10">
+              {userRole === 'client' 
+                ? "You haven't created any assignment requests yet. Start by posting your first assignment." 
+                : "You haven't accepted any assignments yet. Browse open requests to get started."}
+            </p>
+            <button
+              onClick={() => navigate(userRole === 'client' ? '/create-assignment' : '/browse-requests')}
+              className="relative z-10 inline-flex items-center justify-center rounded-full text-base font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:scale-105 h-12 px-8"
+            >
+              {userRole === 'client' ? <><PlusCircle className="w-5 h-5 mr-2" /> Create Request</> : <><Search className="w-5 h-5 mr-2" /> Browse Requests</>}
+            </button>
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-md shadow mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Rating Instructions</h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                You can rate {userRole === 'client' ? 'writers' : 'clients'} once an assignment has been accepted. 
-                Your ratings help build trust in our community and provide valuable feedback.
-              </p>
-              <ul className="mt-2 list-disc list-inside text-gray-600 dark:text-gray-300">
-                <li>Ratings are on a scale of 1-5 stars</li>
-                <li>You can only rate each {userRole === 'client' ? 'writer' : 'client'} once per assignment</li>
-              </ul>
+          <div className="space-y-6">
+            <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start gap-3">
+              <Star className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <h2 className="text-sm font-semibold text-foreground mb-1">Rating Instructions</h2>
+                <p className="text-sm text-muted-foreground">
+                  You can rate {userRole === 'client' ? 'writers' : 'clients'} once an assignment has been accepted. 
+                  Your ratings help build trust in our community and provide valuable feedback.
+                </p>
+              </div>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                {assignments.map((assignment) => (
-                  <li key={assignment.id}>
-                    <div className="px-4 py-5 sm:px-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                            {assignment.course_name} ({assignment.course_code})
-                            {assignment.unique_id && (
-                              <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                                ID: {assignment.unique_id}
-                              </span>
-                            )}
-                          </h3>
-                          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                            {assignment.assignment_type} - {assignment.num_pages} pages
-                          </p>
-                        </div>
-                        <div className="flex items-center">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            assignment.status === 'completed' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' 
-                              : assignment.status === 'cancelled' 
-                                ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100' 
-                                : assignment.status === 'pending'
-                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100'
-                          }`}>
-                            {assignment.status.replace('_', ' ').charAt(0).toUpperCase() + assignment.status.replace('_', ' ').slice(1)}
+            <div className="grid grid-cols-1 gap-6">
+              {assignments.map((assignment) => (
+                <div key={assignment.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row">
+                  {/* Left side: Assignment Details */}
+                  <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+                            {formatAssignmentType(assignment.assignment_type)}
                           </span>
+                          {getStatusBadge(assignment.status)}
                         </div>
-                      </div>
-                      
-                      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              {assignment.writer && assignment.writer.profile_picture ? (
-                                <img 
-                                  className="h-10 w-10 rounded-full" 
-                                  src={assignment.writer.profile_picture} 
-                                  alt="" 
-                                />
-                              ) : (
-                                <svg className="h-10 w-10 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                                </svg>
-                              )}
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {assignment.writer ? 'Writer' : 'Client'}: {assignment.writer ? assignment.writer.name : assignment.client.name}
-                              </p>
-                              <div className="flex items-center">
-                                <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                                <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">
-                                  {assignment.writer ? 
-                                    formatRating(assignment.writer.rating) : 
-                                    formatRating(assignment.client.rating)} 
-                                  ({assignment.writer ? 
-                                    assignment.writer.total_ratings || 0 : 
-                                    assignment.client.total_ratings || 0})
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Created:</span>
-                            <span className="text-sm text-gray-900 dark:text-white">{formatDate(assignment.created_at)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Deadline:</span>
-                            <span className="text-sm text-gray-900 dark:text-white">{formatDate(assignment.deadline)}</span>
-                          </div>
-                          {assignment.completed_at && (
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500 dark:text-gray-400">Completed:</span>
-                              <span className="text-sm text-gray-900 dark:text-white">{formatDate(assignment.completed_at)}</span>
-                            </div>
+                        <h3 className="text-xl font-bold text-foreground">
+                          {assignment.course_name}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{assignment.course_code}</span>
+                          {assignment.unique_id && (
+                            <span className="text-xs font-medium text-muted-foreground flex items-center">
+                              <FileDigit className="h-3 w-3 mr-1" /> ID: {assignment.unique_id}
+                            </span>
                           )}
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Cost:</span>
-                            <span className="text-sm text-gray-900 dark:text-white">₹{assignment.estimated_cost}</span>
-                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="mt-5 flex justify-end space-x-3">
-                        {userRole === 'writer' && assignment.status === 'in_progress' && (
-                          <button
-                            onClick={() => handleCompleteAssignment(assignment.id)}
-                            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                          >
-                            Mark as Completed
-                          </button>
-                        )}
-                        
-                        <button
-                          onClick={() => openRatingModal(assignment)}
-                          disabled={isRatingDisabled(assignment)}
-                          className={`px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${
-                            isRatingDisabled(assignment)
-                              ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
-                              : 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                          }`}
-                        >
-                          {getRatingButtonText(assignment)}
-                        </button>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground flex items-center"><FileText className="h-3.5 w-3.5 mr-1" /> Pages</span>
+                        <p className="text-sm font-medium text-foreground">{assignment.num_pages}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground flex items-center"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Cost</span>
+                        <p className="text-sm font-semibold text-primary">₹{assignment.estimated_cost}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground flex items-center"><Calendar className="h-3.5 w-3.5 mr-1" /> Created</span>
+                        <p className="text-sm font-medium text-foreground">{formatDate(assignment.created_at)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> Deadline</span>
+                        <p className="text-sm font-medium text-foreground">{formatDate(assignment.deadline)}</p>
+                      </div>
+                      {assignment.attachment_url && (
+                        <div className="space-y-1">
+                          <span className="text-xs text-muted-foreground flex items-center"><Paperclip className="h-3.5 w-3.5 mr-1" /> Attachment</span>
+                          <a 
+                            href={`http://localhost:5000${assignment.attachment_url}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            View File
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Right side: User & Actions */}
+                  <div className="p-6 md:w-80 flex flex-col bg-muted/10">
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                      {assignment.writer ? (userRole === 'client' ? 'Assigned Writer' : 'Client') : 'Status'}
+                    </h4>
+                    
+                    {assignment.writer || userRole === 'writer' ? (
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border overflow-hidden">
+                          {(userRole === 'client' ? assignment.writer?.profile_picture : assignment.client.profile_picture) ? (
+                            <img 
+                              src={userRole === 'client' ? assignment.writer?.profile_picture! : assignment.client.profile_picture!} 
+                              alt="Profile" 
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <User className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground line-clamp-1">
+                            {userRole === 'client' ? assignment.writer?.name : assignment.client.name}
+                          </p>
+                          <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-1" />
+                            {userRole === 'client' ? 
+                              formatRating(assignment.writer?.rating) : 
+                              formatRating(assignment.client.rating)} 
+                            <span className="ml-1">
+                              ({userRole === 'client' ? 
+                                assignment.writer?.total_ratings || 0 : 
+                                assignment.client.total_ratings || 0})
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Waiting for a writer to accept
+                      </div>
+                    )}
+                    
+                    <div className="mt-auto space-y-2">
+                      {userRole === 'writer' && assignment.status === 'in_progress' && (
+                        <button
+                          onClick={() => handleCompleteAssignment(assignment.id)}
+                          className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Completed
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => openRatingModal(assignment)}
+                        disabled={isRatingDisabled(assignment)}
+                        className={cn(
+                          "w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9",
+                          isRatingDisabled(assignment)
+                            ? "bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                        )}
+                      >
+                        <Star className={cn("w-4 h-4 mr-2", !isRatingDisabled(assignment) && "fill-current")} />
+                        {getRatingButtonText(assignment)}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -542,37 +574,35 @@ const MyAssignments: React.FC = () => {
 
       {/* WhatsApp Number Modal */}
       {showWhatsAppModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Update WhatsApp Number</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Your WhatsApp number is missing or incorrect. Please enter your WhatsApp number with country code (e.g., 919876543210 for India).
-            </p>
-            <input
-              type="text"
-              value={whatsappNumber}
-              onChange={(e) => setWhatsappNumber(e.target.value)}
-              placeholder="WhatsApp number with country code"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white mb-4"
-            />
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowWhatsAppModal(false)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updateWhatsAppNumber}
-                disabled={updatingWhatsApp || !whatsappNumber}
-                className={`px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                  updatingWhatsApp || !whatsappNumber
-                    ? 'bg-blue-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                }`}
-              >
-                {updatingWhatsApp ? 'Updating...' : 'Update'}
-              </button>
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border shadow-lg rounded-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Update WhatsApp Number</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Your WhatsApp number is missing or incorrect. Please enter your WhatsApp number with country code (e.g., 919876543210 for India).
+              </p>
+              <input
+                type="text"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                placeholder="e.g. 919876543210"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mb-6"
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowWhatsAppModal(false)}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={updateWhatsAppNumber}
+                  disabled={updatingWhatsApp || !whatsappNumber}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 disabled:opacity-50"
+                >
+                  {updatingWhatsApp ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...</> : 'Update'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

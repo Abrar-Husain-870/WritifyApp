@@ -4,6 +4,10 @@ import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
 import { exitGuestMode } from '../utils/auth';
+import { Search, ListTodo, ClipboardList, User as UserIcon, Star, BookOpen, AlertTriangle, ArrowRight, PlusCircle, Sparkles } from 'lucide-react';
+import { cn } from '../utils/cn';
+
+import { Skeleton } from './ui/Skeleton';
 
 interface User {
     id: number;
@@ -19,7 +23,6 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         if (isGuest) {
-            // For guest users, set a placeholder user
             setUser({
                 id: 0,
                 name: 'Guest User',
@@ -29,7 +32,6 @@ const Dashboard: React.FC = () => {
             return;
         }
         
-        // Fetch user data for authenticated users
         fetch(`${API.baseUrl}/api/profile`, {
             credentials: 'include'
         })
@@ -53,234 +55,159 @@ const Dashboard: React.FC = () => {
         exitGuestMode();
     };
 
+    const cards = [
+        {
+            title: "Find a Writer",
+            description: "Browse through our talented writers and find the perfect match for your assignment.",
+            icon: Search,
+            color: "bg-blue-500",
+            lightColor: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+            borderColor: "hover:border-blue-500/30",
+            onClick: () => navigate('/find-writer')
+        },
+        {
+            title: "Browse Requests",
+            description: "Browse open assignment requests and offer your writing services.",
+            icon: ListTodo,
+            color: "bg-green-500",
+            lightColor: "bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400",
+            borderColor: "hover:border-green-500/30",
+            onClick: () => navigate('/browse-requests')
+        },
+        {
+            title: "My Assignments",
+            description: "View and manage your current and completed assignments.",
+            icon: ClipboardList,
+            color: "bg-amber-500",
+            lightColor: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+            borderColor: "hover:border-amber-500/30",
+            onClick: () => navigate('/my-assignments')
+        },
+        {
+            title: "My Profile",
+            description: "View and update your profile information and portfolio.",
+            icon: UserIcon,
+            color: "bg-purple-500",
+            lightColor: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
+            borderColor: "hover:border-purple-500/30",
+            onClick: () => navigate('/profile')
+        },
+        {
+            title: "My Ratings",
+            description: "View and manage ratings you've received from clients.",
+            icon: Star,
+            color: "bg-yellow-500",
+            lightColor: "bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400",
+            borderColor: "hover:border-yellow-500/30",
+            onClick: () => navigate('/my-ratings')
+        },
+        {
+            title: "Tutorial",
+            description: "Learn how to use Writify effectively with our comprehensive guide.",
+            icon: BookOpen,
+            color: "bg-indigo-500",
+            lightColor: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
+            borderColor: "hover:border-indigo-500/30",
+            onClick: () => navigate('/tutorial')
+        }
+    ];
+
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Header */}
+        <div className="min-h-screen bg-background flex flex-col font-sans">
             <Header title="Dashboard" showBackButton={false} />
 
-            {/* Guest Mode Banner */}
             {isGuest && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400 p-4 mb-4">
-                    <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Guest Mode Active</h3>
-                            <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                                <p>You are browsing in guest mode with limited access. Some features are disabled and personal information is anonymized. This session will expire when you close your browser.</p>
-                            </div>
-                            <div className="mt-3">
-                                <button
-                                    onClick={handleExitGuestMode}
-                                    className="text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:text-yellow-600 dark:hover:text-yellow-100 transition-colors"
-                                >
-                                    Sign in with your university email for full access →
-                                </button>
-                            </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-900/50 px-4 py-3">
+                    <div className="max-w-7xl mx-auto flex items-start sm:items-center gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
+                        <div className="flex-1 sm:flex sm:items-center sm:justify-between">
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                                <strong className="font-semibold mr-1">Guest Mode Active.</strong>
+                                You are browsing with limited access. Some features are disabled.
+                            </p>
+                            <button
+                                onClick={handleExitGuestMode}
+                                className="mt-2 sm:mt-0 text-sm font-semibold text-amber-800 dark:text-amber-200 hover:text-amber-900 dark:hover:text-amber-100 underline underline-offset-2 transition-colors"
+                            >
+                                Sign in for full access
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Main content */}
-            <main className="max-w-7xl mx-auto py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-8 sm:mb-12">
-                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
-                        Welcome to Writify{isGuest ? ' (Guest Mode)' : ''}
-                    </h2>
-                    <p className="mt-2 sm:mt-3 max-w-2xl mx-auto text-base sm:text-xl text-gray-500 dark:text-gray-400">
-                        Connect with writers or find assignments
-                    </p>
+            <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+                {/* Welcome Banner */}
+                <div className="relative overflow-hidden rounded-3xl bg-card border border-border shadow-sm">
+                    <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 -mb-16 -ml-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div className="relative p-8 sm:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+                                <Sparkles className="h-4 w-4" />
+                                <span>Welcome back</span>
+                            </div>
+                            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
+                                {loading ? <Skeleton className="h-10 w-64 mb-2" /> : `Hello, ${user?.name?.split(' ')[0] || 'Student'}! 👋`}
+                            </h1>
+                            <div className="text-lg text-muted-foreground max-w-xl">
+                                {loading ? <Skeleton className="h-6 w-full max-w-md" /> : 'Ready to tackle your assignments? Find the perfect writer or start earning by helping others.'}
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
+                            <button 
+                                onClick={() => navigate('/create-assignment')}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-3.5 text-sm font-semibold shadow-md hover:bg-primary/90 transition-all hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <PlusCircle className="h-5 w-5" />
+                                Post Assignment
+                            </button>
+                            <button 
+                                onClick={() => navigate('/find-writer')}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary text-secondary-foreground px-6 py-3.5 text-sm font-semibold shadow-sm hover:bg-secondary/80 border border-border/50 transition-all hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <Search className="h-5 w-5" />
+                                Find Writer
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {/* Find a Writer Card */}
-                    <div 
-                        onClick={() => navigate('/find-writer')}
-                        className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
-                    >
-                        <div className="px-4 py-5 sm:p-6 flex-grow">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-blue-500 dark:bg-blue-600 rounded-md p-3">
-                                    <svg className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-5">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                        Find a Writer
+                {/* Quick Actions Grid */}
+                <div>
+                    <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                        Quick Actions
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {cards.map((card, index) => (
+                            <div 
+                                key={index}
+                                onClick={card.onClick}
+                                className={cn(
+                                    "group relative bg-card overflow-hidden rounded-2xl border border-border/60 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer flex flex-col h-full",
+                                    card.borderColor,
+                                    "hover:-translate-y-1"
+                                )}
+                            >
+                                <div className="p-6 flex-grow flex flex-col">
+                                    <div className="flex items-center justify-between mb-5">
+                                        <div className={cn("inline-flex p-3.5 rounded-xl transition-transform duration-300 group-hover:scale-110", card.lightColor)}>
+                                            <card.icon className="h-6 w-6" />
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-x-2 group-hover:translate-x-0">
+                                            <ArrowRight className="h-4 w-4 text-foreground" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                                        {card.title}
                                     </h3>
-                                    <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                                        Browse through our talented writers and find the perfect match for your assignment.
+                                    <p className="text-sm text-muted-foreground leading-relaxed mt-auto">
+                                        {card.description}
                                     </p>
                                 </div>
                             </div>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-4 sm:px-6">
-                            <div className="text-sm">
-                                <span className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
-                                    Find a writer now <span aria-hidden="true">&rarr;</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Browse Requests Card */}
-                    <div 
-                        onClick={() => navigate('/browse-requests')}
-                        className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
-                    >
-                        <div className="px-4 py-5 sm:p-6 flex-grow">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-green-500 dark:bg-green-600 rounded-md p-3">
-                                    <svg className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-5">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                        Browse Requests
-                                    </h3>
-                                    <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                                        Browse open assignment requests and offer your writing services.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-4 sm:px-6">
-                            <div className="text-sm">
-                                <span className="font-medium text-green-600 dark:text-green-400 hover:text-green-500 dark:hover:text-green-300">
-                                    Browse requests <span aria-hidden="true">&rarr;</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* My Assignments Card */}
-                    <div 
-                        onClick={() => navigate('/my-assignments')}
-                        className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
-                    >
-                        <div className="px-4 py-5 sm:p-6 flex-grow">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-amber-500 dark:bg-amber-600 rounded-md p-3">
-                                    <svg className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>
-                                </div>
-                                <div className="ml-5">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                        My Assignments
-                                    </h3>
-                                    <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                                        View and manage your current and completed assignments.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-4 sm:px-6">
-                            <div className="text-sm">
-                                <span className="font-medium text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300">
-                                    View assignments <span aria-hidden="true">&rarr;</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* My Profile Card */}
-                    <div 
-                        onClick={() => navigate('/profile')}
-                        className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
-                    >
-                        <div className="px-4 py-5 sm:p-6 flex-grow">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-purple-500 dark:bg-purple-600 rounded-md p-3">
-                                    <svg className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-5">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                        My Profile
-                                    </h3>
-                                    <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                                        View and update your profile information and portfolio.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-4 sm:px-6">
-                            <div className="text-sm">
-                                <span className="font-medium text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300">
-                                    View profile <span aria-hidden="true">&rarr;</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* My Ratings Card */}
-                    <div 
-                        onClick={() => navigate('/my-ratings')}
-                        className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
-                    >
-                        <div className="px-4 py-5 sm:p-6 flex-grow">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-yellow-500 dark:bg-yellow-600 rounded-md p-3">
-                                    <svg className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-5">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                        My Ratings
-                                    </h3>
-                                    <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                                        View and manage ratings you've received from clients.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-4 sm:px-6">
-                            <div className="text-sm">
-                                <span className="font-medium text-yellow-600 dark:text-yellow-400 hover:text-yellow-500 dark:hover:text-yellow-300">
-                                    Check your ratings <span aria-hidden="true">&rarr;</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Tutorial Card */}
-                    <div 
-                        onClick={() => navigate('/tutorial')}
-                        className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
-                    >
-                        <div className="px-4 py-5 sm:p-6 flex-grow">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-purple-500 dark:bg-purple-600 rounded-md p-3">
-                                    <svg className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                    </svg>
-                                </div>
-                                <div className="ml-5">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                        Tutorial
-                                    </h3>
-                                    <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                                        Learn how to use Writify effectively with our comprehensive guide.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 px-4 py-4 sm:px-6">
-                            <div className="text-sm">
-                                <span className="font-medium text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300">
-                                    View tutorial <span aria-hidden="true">&rarr;</span>
-                                </span>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </main>
