@@ -29,6 +29,27 @@ const crypto = require('crypto');
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // Configuration
 const ASSIGNMENT_EXPIRATION_DAYS = 7; // Assignment requests expire after 7 days
@@ -289,33 +310,6 @@ const app = express();
 // Trust the first proxy for secure cookies and session handling on Render
 app.set('trust proxy', 1);
 
-// Configure security headers with helmet
-security.configureHelmet(app);
-
-// Apply rate limiting to all routes
-app.use(security.apiLimiter);
-
-// Health check endpoint to prevent cold starts on Render
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-// Apply input validation middleware
-app.use(security.validateInput);
-
-app.use(express.json());
-
-// Handle manifest.json and other static file requests before any auth middleware
-app.get('/manifest.json', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'manifest.json'));
-});
-
-app.get('/favicon.ico', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'favicon.ico'));
-});
-// Serve frontend static files before any API or auth routes
-app.use(express.static(path.join(__dirname, '../frontend/build')));
-
 app.use(cors({
     origin: function(origin, callback) {
         // Allow all Vercel domains and localhost
@@ -331,6 +325,35 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['set-cookie']
 }));
+
+// Configure security headers with helmet
+security.configureHelmet(app);
+
+// Health check endpoint to prevent cold starts on Render
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.use(express.json());
+
+// Handle manifest.json and other static file requests before any auth middleware
+app.get('/manifest.json', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'manifest.json'));
+});
+
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'favicon.ico'));
+});
+// Serve frontend static files before any API or auth routes
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// Apply rate limiting to API and auth routes
+app.use('/api', security.apiLimiter);
+app.use('/auth', security.apiLimiter);
+
+// Apply input validation middleware
+app.use(security.validateInput);
 
 // Passport serialization
 passport.serializeUser((user, done) => {
@@ -430,28 +453,8 @@ passport.use(new GoogleStrategy({
     }
 }));
 
-// Define CORS middleware for auth routes
-const authCors = (req, res, next) => {
-    const origin = req.headers.origin;
-    console.log('Request origin:', origin);
-    
-    // Allow all Vercel domains and localhost
-    if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
-    }
-    
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    
-    next();
-};
-
 // Auth routes with better error handling
-app.get('/auth/google', security.authLimiter, authCors, (req, res, next) => {
+app.get('/auth/google', security.authLimiter, (req, res, next) => {
     console.log('Starting Google OAuth flow');
     passport.authenticate('google', { 
         scope: ['profile', 'email'],
@@ -459,7 +462,7 @@ app.get('/auth/google', security.authLimiter, authCors, (req, res, next) => {
     })(req, res, next);
 });
 
-app.get('/auth/google/callback', security.authLimiter, authCors, (req, res, next) => {
+app.get('/auth/google/callback', security.authLimiter, (req, res, next) => {
     passport.authenticate('google', (err, user, info) => {
         // Check if email is locked due to too many failed attempts
         if (info && info.email && security.isAccountLocked(info.email)) {
@@ -524,21 +527,6 @@ app.use((err, req, res, next) => {
 
 // Auth status endpoint with detailed logging - no auth required
 app.get('/auth/status', (req, res) => {
-    // Apply CORS for this route specifically
-    const origin = req.headers.origin;
-    // Allow any origin for auth status checks
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    if (origin) {
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
-    }
-
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
     try {
         console.log('Auth status check - Origin:', req.headers.origin);
         console.log('Auth status check - Session ID:', req.session?.id);
@@ -586,20 +574,6 @@ app.get('/auth/status', (req, res) => {
 
 // Guest login endpoint - allows recruiters to explore the app without authentication
 app.post('/auth/guest-login', security.authLimiter, (req, res) => { // <--- THIS IS NOW CORRECT
-    // Apply CORS for this route specifically
-    const origin = req.headers.origin;
-    if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
-    }
-
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    
     try {
         console.log('Guest login initiated from:', req.headers.origin);
         console.log('Request headers:', req.headers);
@@ -646,23 +620,6 @@ app.post('/auth/guest-login', security.authLimiter, (req, res) => { // <--- THIS
     }
 });
 
-// Logout route with session cleanup
-app.get('/auth/logout', authCors, (req, res) => {
-    console.log('Logging out user:', req.user?.id);
-    req.logout((err) => {
-        if (err) {
-            console.error('Logout error:', err);
-            return res.status(500).json({ error: 'Logout failed' });
-        }
-        req.session.destroy((err) => {
-            if (err) {
-                console.error('Session destruction error:', err);
-            }
-            res.clearCookie('connect.sid');
-            res.json({ message: 'Logged out successfully' });
-        });
-    });
-});
 
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
@@ -787,8 +744,9 @@ app.get('/api/writers/:id', isAuthenticated, async (req, res) => {
     }
 });
 
-app.post('/api/assignment-requests', isAuthenticated, async (req, res) => {
+app.post('/api/assignment-requests', isAuthenticated, upload.single('attachment'), async (req, res) => {
     const { course_name, course_code, assignment_type, num_pages, deadline, estimated_cost } = req.body;
+    const attachmentUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     try {
         // Validate required fields
@@ -838,8 +796,8 @@ app.post('/api/assignment-requests', isAuthenticated, async (req, res) => {
 
         const result = await pool.query(`
             INSERT INTO assignment_requests 
-            (client_id, course_name, course_code, assignment_type, num_pages, deadline, estimated_cost, status, unique_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8)
+            (client_id, course_name, course_code, assignment_type, num_pages, deadline, estimated_cost, status, unique_id, attachment_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8, $9)
             RETURNING *
         `, [
             sanitizedData.client_id, 
@@ -849,7 +807,8 @@ app.post('/api/assignment-requests', isAuthenticated, async (req, res) => {
             sanitizedData.num_pages, 
             sanitizedData.deadline, 
             sanitizedData.estimated_cost,
-            sanitizedData.unique_id
+            sanitizedData.unique_id,
+            attachmentUrl
         ]);
         
         res.status(201).json(result.rows[0]);
@@ -883,6 +842,7 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
                 ar.status,
                 ar.created_at,
                 ar.unique_id,
+                ar.attachment_url,
                 u.id as client_id,
                 u.name as client_name,
                 u.rating as client_rating,
@@ -913,7 +873,8 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
             estimated_cost: req.estimated_cost,
             status: req.status,
             created_at: req.created_at,
-            unique_id: req.unique_id
+            unique_id: req.unique_id,
+            attachment_url: req.attachment_url
         }));
 
         console.log(`Found ${transformedRequests.length} open assignment requests`);
@@ -1075,6 +1036,12 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             }
         }
         
+        // Notify client
+        await pool.query(
+            'INSERT INTO notifications (user_id, title, message) VALUES ($1, $2, $3)',
+            [client.id, 'Assignment Accepted', `Your assignment request for ${request.course_name} has been accepted by a writer.`]
+        );
+        
         // Return success with client WhatsApp number for direct contact
         // With our new approach, we're sending the full phone number for better WhatsApp integration
         res.json({
@@ -1168,6 +1135,7 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     ar.num_pages,
                     ar.deadline,
                     ar.estimated_cost,
+                    ar.attachment_url,
                     a.created_at,
                     COALESCE(a.status, 'pending') as status,
                     a.completed_at,
@@ -1239,6 +1207,7 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                 num_pages: a.num_pages,
                 deadline: a.deadline,
                 estimated_cost: a.estimated_cost,
+                attachment_url: a.attachment_url,
                 // Check if client has rated the writer
                 has_rated_writer: a.writer_id ? ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.writer_id : false,
                 has_rated_client: false // Clients don't rate themselves
@@ -1259,6 +1228,7 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     ar.num_pages,
                     ar.deadline,
                     ar.estimated_cost,
+                    ar.attachment_url,
                     a.created_at,
                     a.status,
                     a.completed_at,
@@ -1330,6 +1300,7 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                 num_pages: a.num_pages,
                 deadline: a.deadline,
                 estimated_cost: a.estimated_cost,
+                attachment_url: a.attachment_url,
                 has_rated_writer: false, // Writers don't rate themselves
                 // Check if writer has rated the client
                 has_rated_client: ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.client_id
@@ -1786,9 +1757,43 @@ app.put('/api/assignments/:id/complete', isAuthenticated, async (req, res) => {
             ['completed', assignmentId]
         );
         
+        // Notify client
+        await pool.query(
+            'INSERT INTO notifications (user_id, title, message) VALUES ($1, $2, $3)',
+            [assignment.client_id, 'Assignment Completed', 'Your assignment has been marked as completed by the writer.']
+        );
+        
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error completing assignment:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get user notifications
+app.get('/api/notifications', isAuthenticated, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
+            [req.user.id]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+        await pool.query(
+            'UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2',
+            [req.params.id, req.user.id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -1891,7 +1896,16 @@ app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    // Extensive error logging
+    console.error('==================== ERROR ====================');
+    console.error(`Time: ${new Date().toISOString()}`);
+    console.error(`Path: ${req.method} ${req.originalUrl}`);
+    console.error(`User: ${req.user ? req.user.id : 'Unauthenticated'}`);
+    console.error(`Body: ${JSON.stringify(req.body)}`);
+    console.error(`Error Message: ${err.message}`);
+    console.error(`Stack Trace:\n${err.stack}`);
+    console.error('===============================================');
+    
     res.status(500).json({ 
         error: 'Something broke!',
         message: err.message 
@@ -1944,14 +1958,14 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 // API logout route that matches frontend configuration
-app.get('/api/auth/logout', authCors, (req, res) => {
+app.get('/api/auth/logout', (req, res) => {
     // Redirect to the main logout handler
     console.log('API logout route called, redirecting to main logout handler');
     res.redirect('/auth/logout');
 });
 
 // Logout route
-app.get('/auth/logout', authCors, (req, res) => {
+app.get('/auth/logout', (req, res) => {
     console.log('Logging out user:', req.user?.id);
     
     // Set the global flag to prevent database operations during logout

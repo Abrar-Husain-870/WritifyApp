@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API } from '../utils/api';
 import Header from './Header';
-import { debugLog, errorLog } from '../utils/logUtil';
+import { Star, BookOpen, User, Phone, CheckCircle2, AlertCircle, Loader2, Send, Clock, FileText, IndianRupee } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 interface Writer {
     id: number;
@@ -52,8 +53,6 @@ const WriterProfile: React.FC = () => {
         })
         .then(res => res.json())
         .then(data => {
-            debugLog('Writer data received:', data);
-            // Ensure rating is a number for proper display
             if (data && typeof data.rating === 'string') {
                 data.rating = parseFloat(data.rating) || 0;
             }
@@ -61,39 +60,31 @@ const WriterProfile: React.FC = () => {
             setLoading(false);
         })
         .catch(err => {
-            errorLog('Error fetching writer:', err);
             setLoading(false);
         });
     }, [id]);
 
     const validateForm = () => {
-        // Validate field lengths based on database constraints
         if (formData.course_name.length > 255) {
             setError('Course name must be less than 255 characters');
             return false;
         }
-        
         if (formData.course_code.length > 50) {
             setError('Course code must be less than 50 characters');
             return false;
         }
-        
         if (formData.assignment_type.length > 100) {
             setError('Assignment type must be less than 100 characters');
             return false;
         }
-        
-        // Validate numeric fields
         if (isNaN(parseInt(formData.num_pages.toString())) || parseInt(formData.num_pages.toString()) <= 0) {
             setError('Number of pages must be a positive number');
             return false;
         }
-        
         if (isNaN(parseFloat(formData.estimated_cost.toString())) || parseFloat(formData.estimated_cost.toString()) <= 0 || parseFloat(formData.estimated_cost.toString()) % 50 !== 0) {
             setError('Estimated cost must be a positive multiple of 50');
             return false;
         }
-        
         return true;
     };
 
@@ -102,14 +93,12 @@ const WriterProfile: React.FC = () => {
         setSubmitting(true);
         setError(null);
         
-        // Validate form before submission
         if (!validateForm()) {
             setSubmitting(false);
             return;
         }
         
         try {
-            // Truncate values to match database constraints
             const sanitizedData = {
                 ...formData,
                 course_name: formData.course_name.substring(0, 255),
@@ -134,53 +123,27 @@ const WriterProfile: React.FC = () => {
             });
 
             if (response.ok) {
-                // Get the response data which includes the unique ID
                 const responseData = await response.json();
                 const uniqueId = responseData.unique_id;
                 
-                // Try to use the whatsapp_number property first, then fall back to whatsapp_redirect
-                // With our updated backend, both should now contain the full number
                 let whatsappNumber = writer?.whatsapp_number || writer?.whatsapp_redirect || '';
                 
-                // Check if WhatsApp number is empty
                 if (!whatsappNumber) {
                     setSuccess('Request submitted successfully!');
                     alert('The writer has not added their WhatsApp number. Please check your assignments page later.');
-                    
-                    setTimeout(() => {
-                        navigate('/dashboard');
-                    }, 1000);
+                    setTimeout(() => navigate('/dashboard'), 1000);
                     return;
                 }
                 
-                // Process the phone number without logging sensitive data
-                
-                // Clean the phone number to contain only digits
                 whatsappNumber = whatsappNumber.replace(/\D/g, '');
                 
-                // Format the phone number for WhatsApp
-                
-                // Ensure the number has the country code
                 if (whatsappNumber.length === 10) {
-                    // Add country code (for India) if not already present
                     whatsappNumber = '91' + whatsappNumber;
-                    // Added country code to number
                 } else if (whatsappNumber.length < 10) {
                     setSuccess('Request submitted successfully!');
                     alert(`The writer has an invalid phone number (${whatsappNumber}). Please check your assignments page later.`);
-                    
-                    setTimeout(() => {
-                        navigate('/dashboard');
-                    }, 1000);
+                    setTimeout(() => navigate('/dashboard'), 1000);
                     return;
-                } else if (whatsappNumber.length > 10 && !whatsappNumber.startsWith('91')) {
-                    // If it's more than 10 digits but doesn't start with the country code,
-                    // check if adding the country code would make it valid
-                    if (whatsappNumber.length === 12 && whatsappNumber.startsWith('91')) {
-                        // Number already has country code
-                    } else {
-                        // Number format is unusual
-                    }
                 }
                 
                 const message = encodeURIComponent(`Hi, I've submitted an assignment request for ${formData.course_name}${uniqueId ? ` [ID: ${uniqueId}]` : ''}. Let's discuss the details.`);
@@ -189,18 +152,13 @@ const WriterProfile: React.FC = () => {
                 
                 setTimeout(() => {
                     window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
-                    
-                    setTimeout(() => {
-                        navigate('/dashboard');
-                    }, 1000);
+                    setTimeout(() => navigate('/dashboard'), 1000);
                 }, 500);
             } else {
                 const errorData = await response.json();
                 setError(errorData.error || 'Failed to submit request. Please try again.');
-                console.error('Error response:', errorData);
             }
         } catch (error) {
-            errorLog('Error submitting request:', error);
             setError('Network error. Please check your connection and try again.');
         } finally {
             setSubmitting(false);
@@ -215,207 +173,292 @@ const WriterProfile: React.FC = () => {
         }));
     };
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'active': return 'bg-green-500';
+            case 'busy': return 'bg-amber-500';
+            case 'inactive': return 'bg-muted-foreground';
+            default: return 'bg-muted-foreground';
+        }
+    };
+
+    const getStatusText = (status: string) => {
+        switch (status) {
+            case 'active': return 'Available';
+            case 'busy': return 'Currently Busy';
+            case 'inactive': return 'Not Available';
+            default: return 'Unknown';
+        }
+    };
+
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-screen dark:bg-gray-900">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 dark:border-blue-400"></div>
+            <div className="min-h-screen bg-background flex flex-col">
+                <Header title="Writer Profile" />
+                <div className="flex-1 flex justify-center items-center py-20">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
             </div>
         );
     }
 
     if (!writer) {
-        return <div className="dark:text-white">Writer not found</div>;
+        return (
+            <div className="min-h-screen bg-background flex flex-col">
+                <Header title="Writer Profile" />
+                <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+                    <User className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Writer Not Found</h3>
+                    <p className="text-muted-foreground">The writer you are looking for does not exist or has been removed.</p>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Header */}
-            <Header title={writer ? `${writer.name}'s Profile` : 'Writer Profile'} />
+        <div className="min-h-screen bg-background flex flex-col">
+            <Header title={`${writer.name}'s Profile`} />
 
-            {/* Main content */}
-            <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                    {/* Writer Profile Section */}
-                    <div>
-                        <div className="bg-white dark:bg-gray-800 shadow-lg overflow-hidden rounded-lg" style={{ borderRadius: '0.75rem' }}>
-                            <div className="mb-8 rounded-lg overflow-hidden shadow-lg">
-                                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-800 px-4 py-3 rounded-t-lg flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-white" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                                    </svg>
-                                    <h3 className="text-xl font-semibold text-white">Sample Work</h3>
-                                </div>
-                                <div className="bg-gray-200 dark:bg-gray-700 rounded-b-lg overflow-hidden shadow-inner" style={{ height: '700px', borderRadius: '0 0 0.75rem 0.75rem', border: '1px solid rgba(0,0,0,0.1)', borderTop: 'none' }}>
-                                    <img 
-                                        src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22565%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20565%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22565%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22280%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'} 
-                                        alt="Sample work" 
-                                        className="w-full h-full object-cover transition-all duration-500 hover:scale-[1.02]"
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22565%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20565%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22565%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22280%22%3EImage%20Not%20Found%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
-                                            target.onerror = null; // Prevent infinite error loop
-                                        }}
-                                    />
-                                </div>
-                            </div>
+            <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left Column: Writer Profile & Sample Work */}
+                    <div className="lg:col-span-5 space-y-8">
+                        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                             <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{writer.name}</h2>
-                                    <div className="flex items-center">
-                                        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                        <span className="ml-1 text-gray-600 dark:text-gray-400">{parseFloat(writer.rating as string || '0').toFixed(1)} ({writer.total_ratings} reviews)</span>
+                                <div className="flex items-center gap-5 mb-6">
+                                    <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center shrink-0 border-2 border-border overflow-hidden">
+                                        {writer.profile_picture ? (
+                                            <img 
+                                                src={writer.profile_picture} 
+                                                alt={writer.name} 
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <User className="h-10 w-10 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-foreground mb-1">{writer.name}</h2>
+                                        <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md w-fit">
+                                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                            <span className="font-medium text-sm">{parseFloat(String(writer.rating)).toFixed(1)}</span>
+                                            <span className="text-muted-foreground text-xs">({writer.total_ratings} reviews)</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <p className="text-gray-600 dark:text-gray-400 mb-4">Studying {writer.university_stream}</p>
+
                                 <div className="space-y-4">
-                                    <div className="flex items-center">
-                                        <svg className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span className="text-gray-600 dark:text-gray-400">Status: {writer.writer_status}</span>
+                                    <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <BookOpen className="h-4 w-4 text-muted-foreground" />
+                                        <span>Studying <span className="font-medium">{writer.university_stream}</span></span>
                                     </div>
-                                    <div className="flex items-center">
-                                        <svg className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                        </svg>
-                                        <span className="text-gray-600 dark:text-gray-400">WhatsApp: {writer.whatsapp_number ? '******' + writer.whatsapp_number.slice(-4) : 'Not provided'}</span>
+                                    <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <div className="flex items-center justify-center h-4 w-4">
+                                            <div className={cn("h-2.5 w-2.5 rounded-full", getStatusColor(writer.writer_status))} />
+                                        </div>
+                                        <span>Status: <span className="font-medium">{getStatusText(writer.writer_status)}</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-foreground">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <span>WhatsApp: <span className="font-medium">{writer.whatsapp_number ? '******' + writer.whatsapp_number.slice(-4) : 'Not provided'}</span></span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                            <div className="p-4 border-b border-border bg-muted/20">
+                                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                                    <FileText className="h-4 w-4" /> Sample Work
+                                </h3>
+                            </div>
+                            <div className="relative aspect-[3/4] w-full bg-muted">
+                                <img 
+                                    src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22533%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20533%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22400%22%20height%3D%22533%22%20fill%3D%22%23f3f4f6%22%3E%3C%2Frect%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fsvg%3E'} 
+                                    alt="Sample work" 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22533%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20533%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22400%22%20height%3D%22533%22%20fill%3D%22%23f3f4f6%22%3E%3C%2Frect%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%3EImage%20Not%20Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+                                    }}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Assignment Request Form */}
-                    <div className="bg-white dark:bg-gray-800 shadow-lg p-6">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Submit Assignment Request</h3>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course Name</label>
-                                <input
-                                    type="text"
-                                    name="course_name"
-                                    value={formData.course_name}
-                                    onChange={handleChange}
-                                    required
-                                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                />
+                    {/* Right Column: Assignment Request Form */}
+                    <div className="lg:col-span-7">
+                        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden h-full">
+                            <div className="p-6 border-b border-border bg-muted/20">
+                                <h3 className="text-xl font-semibold text-foreground">Submit Assignment Request</h3>
+                                <p className="text-sm text-muted-foreground mt-1">Send a direct request to {writer.name}</p>
                             </div>
+                            
+                            <div className="p-6">
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none flex items-center gap-2">
+                                                <BookOpen className="h-4 w-4 text-muted-foreground" /> Course Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="course_name"
+                                                value={formData.course_name}
+                                                onChange={handleChange}
+                                                required
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                placeholder="e.g. Data Structures"
+                                            />
+                                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course Code</label>
-                                <input
-                                    type="text"
-                                    name="course_code"
-                                    value={formData.course_code}
-                                    onChange={handleChange}
-                                    required
-                                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                />
-                            </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none flex items-center gap-2">
+                                                <FileText className="h-4 w-4 text-muted-foreground" /> Course Code
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="course_code"
+                                                value={formData.course_code}
+                                                onChange={handleChange}
+                                                required
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                placeholder="e.g. CS301"
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assignment Type</label>
-                                <select
-                                    name="assignment_type"
-                                    value={formData.assignment_type}
-                                    onChange={handleChange}
-                                    required
-                                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                >
-                                    <option value="class_assignment">Class Assignment</option>
-                                    <option value="lab_files">Lab Files</option>
-                                    <option value="graphic_design">Graphic Design</option>
-                                    <option value="workshop_files">Workshop Files</option>
-                                </select>
-                            </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium leading-none">Assignment Type</label>
+                                        <select
+                                            name="assignment_type"
+                                            value={formData.assignment_type}
+                                            onChange={handleChange}
+                                            required
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="class_assignment">Class Assignment</option>
+                                            <option value="lab_files">Lab Files</option>
+                                            <option value="graphic_design">Graphic Design</option>
+                                            <option value="workshop_files">Workshop Files</option>
+                                        </select>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Number of Pages</label>
-                                <input
-                                    type="number"
-                                    name="num_pages"
-                                    value={formData.num_pages}
-                                    onChange={handleChange}
-                                    required
-                                    min="1"
-                                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                />
-                            </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none">Number of Pages</label>
+                                            <input
+                                                type="number"
+                                                name="num_pages"
+                                                value={formData.num_pages}
+                                                onChange={handleChange}
+                                                required
+                                                min="1"
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+                                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Deadline</label>
-                                <input
-                                    type="datetime-local"
-                                    name="deadline"
-                                    value={formData.deadline}
-                                    onChange={handleChange}
-                                    required
-                                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                />
-                            </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none flex items-center gap-2">
+                                                <Clock className="h-4 w-4 text-muted-foreground" /> Deadline
+                                            </label>
+                                            <input
+                                                type="datetime-local"
+                                                name="deadline"
+                                                value={formData.deadline}
+                                                onChange={handleChange}
+                                                required
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Cost (₹)</label>
-                                <div className="mt-1">
-                                    <div className="flex items-center space-x-2">
-                                        <span className="text-gray-700 dark:text-gray-300 font-medium">₹50</span>
+                                    <div className="space-y-4 bg-muted/30 p-4 rounded-lg border border-border">
+                                        <label className="text-sm font-medium leading-none flex items-center gap-2">
+                                            <IndianRupee className="h-4 w-4 text-muted-foreground" /> Estimated Cost
+                                        </label>
+                                        <div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-sm font-medium text-muted-foreground">₹50</span>
+                                                <input
+                                                    type="range"
+                                                    name="estimated_cost"
+                                                    min="50"
+                                                    max="2500"
+                                                    step="50"
+                                                    value={formData.estimated_cost}
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value);
+                                                        setFormData({
+                                                            ...formData,
+                                                            estimated_cost: value
+                                                        });
+                                                    }}
+                                                    className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                                                />
+                                                <span className="text-sm font-medium text-muted-foreground">₹2500</span>
+                                            </div>
+                                            <div className="mt-4 text-center">
+                                                <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-lg">
+                                                    ₹{formData.estimated_cost}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium leading-none flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground" /> Your WhatsApp Number
+                                        </label>
                                         <input
-                                            type="range"
-                                            name="estimated_cost"
-                                            min="50"
-                                            max="2500"
-                                            step="50"
-                                            value={formData.estimated_cost}
-                                            onChange={(e) => {
-                                                const value = parseInt(e.target.value);
-                                                setFormData({
-                                                    ...formData,
-                                                    estimated_cost: value
-                                                });
-                                            }}
-                                            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                                            type="tel"
+                                            name="whatsapp_number"
+                                            value={formData.whatsapp_number}
+                                            onChange={handleChange}
+                                            required
+                                            placeholder="+91XXXXXXXXXX"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         />
-                                        <span className="text-gray-700 dark:text-gray-300 font-medium">₹2500</span>
                                     </div>
-                                    <div className="mt-2 text-center">
-                                        <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">₹{formData.estimated_cost}</span>
+
+                                    <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded-md border border-border/50">
+                                        <p>Note: Your request will be visible to writers for 7 days. After that, it will expire and no longer be visible in the marketplace.</p>
                                     </div>
-                                </div>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    Drag the slider to set cost in multiples of ₹50
-                                </p>
+
+                                    {error && (
+                                        <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20 flex items-start gap-2">
+                                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <span>{error}</span>
+                                        </div>
+                                    )}
+                                    {success && (
+                                        <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 flex items-start gap-2">
+                                            <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <span>{success}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="submit"
+                                        disabled={submitting || writer.writer_status === 'inactive'}
+                                        className={cn(
+                                            "w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-11 px-8",
+                                            writer.writer_status === 'inactive' 
+                                                ? "bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed" 
+                                                : "bg-primary text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
+                                        )}
+                                    >
+                                        {submitting ? (
+                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
+                                        ) : writer.writer_status === 'inactive' ? (
+                                            'Writer is currently inactive'
+                                        ) : (
+                                            <><Send className="mr-2 h-4 w-4" /> Submit Request & Connect on WhatsApp</>
+                                        )}
+                                    </button>
+                                </form>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your WhatsApp Number</label>
-                                <input
-                                    type="tel"
-                                    name="whatsapp_number"
-                                    value={formData.whatsapp_number}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="+91XXXXXXXXXX"
-                                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                />
-                            </div>
-
-                            <div className="text-sm text-gray-500 dark:text-gray-400 italic">
-                                <p>Note: Your request will be visible to writers for 7 days. After that, it will expire and no longer be visible in the marketplace.</p>
-                            </div>
-
-                            {error && <p className="text-red-500 dark:text-red-400">{error}</p>}
-                            {success && <p className="text-green-500 dark:text-green-400">{success}</p>}
-
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                                {submitting ? 'Submitting...' : 'Submit Request & Connect on WhatsApp'}
-                            </button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </main>

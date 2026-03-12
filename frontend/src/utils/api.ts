@@ -13,7 +13,7 @@ const API_URL = isProduction
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
 
 // Common fetch options with credentials
-const fetchOptions = {
+export const fetchOptions = {
   credentials: 'include' as RequestCredentials,
   headers: {
     'Content-Type': 'application/json'

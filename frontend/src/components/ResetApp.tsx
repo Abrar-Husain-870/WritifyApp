@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
+import { AlertTriangle, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 const ResetApp: React.FC = () => {
   const navigate = useNavigate();
@@ -37,12 +39,10 @@ const ResetApp: React.FC = () => {
       const data = await response.json();
       setMessage(data.message);
       
-      // Wait 3 seconds before redirecting to dashboard
       setTimeout(() => {
         navigate('/dashboard');
       }, 3000);
     } catch (error) {
-      console.error('Error resetting application:', error);
       setError(error instanceof Error ? error.message : 'Failed to reset application');
     } finally {
       setIsResetting(false);
@@ -50,69 +50,67 @@ const ResetApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header title="Reset Application" />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-              Reset Application Data
-            </h3>
-            <div className="mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">
-              <p>
-                This will delete all assignments, ratings, and reset user ratings. This action cannot be undone.
+      <main className="flex-1 max-w-3xl w-full mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="bg-card rounded-xl border border-destructive/20 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border bg-destructive/5 flex items-center gap-3">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+            <div>
+              <h3 className="text-lg font-semibold text-destructive">
+                Reset Application Data
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                This is a destructive action that cannot be undone.
               </p>
             </div>
-            <div className="mt-5">
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={isResetting}
-                className={`inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-md shadow-sm text-white ${
-                  isResetting 
-                    ? 'bg-red-300 cursor-not-allowed' 
-                    : 'bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                } sm:text-sm`}
-              >
-                {isResetting ? 'Resetting...' : 'Reset Application'}
-              </button>
+          </div>
+          
+          <div className="p-6">
+            <div className="mb-8">
+              <p className="text-foreground">
+                This action will permanently delete:
+              </p>
+              <ul className="list-disc pl-5 mt-2 space-y-1 text-muted-foreground">
+                <li>All assignments and assignment requests</li>
+                <li>All ratings and reviews</li>
+                <li>Reset all user ratings to 0</li>
+              </ul>
             </div>
             
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isResetting}
+              className={cn(
+                "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-11 px-8",
+                isResetting 
+                  ? "bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed" 
+                  : "bg-destructive text-destructive-foreground shadow hover:bg-destructive/90"
+              )}
+            >
+              {isResetting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resetting...</>
+              ) : (
+                <><AlertTriangle className="mr-2 h-4 w-4" /> Reset Application</>
+              )}
+            </button>
+            
             {message && (
-              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900 border border-green-400 dark:border-green-700 rounded-md">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400 dark:text-green-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                      {message}
-                    </p>
-                    <p className="mt-2 text-sm text-green-700 dark:text-green-300">
-                      Redirecting to dashboard in a few seconds...
-                    </p>
-                  </div>
+              <div className="mt-6 p-4 bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800 rounded-lg flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">{message}</p>
+                  <p className="text-sm mt-1 opacity-90">Redirecting to dashboard in a few seconds...</p>
                 </div>
               </div>
             )}
             
             {error && (
-              <div className="mt-4 p-4 bg-red-50 dark:bg-red-900 border border-red-400 dark:border-red-700 rounded-md">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400 dark:text-red-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                      {error}
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-6 p-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <p className="font-medium">{error}</p>
               </div>
             )}
           </div>

@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
-import { debugLog, errorLog } from '../utils/logUtil';
+import { Star, Loader2, AlertCircle, MessageSquare, BookOpen } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 interface Rating {
   id: number;
@@ -35,7 +36,6 @@ const MyRatings: React.FC = () => {
         setLoading(true);
 
         if (isGuest) {
-          // For guest users, show empty ratings
           setRatings([]);
           setAverageRating(0);
           setTotalRatings(0);
@@ -43,7 +43,6 @@ const MyRatings: React.FC = () => {
           return;
         }
 
-        // For registered users, fetch real ratings
         const response = await fetch(API.users.ratings, {
           credentials: 'include',
           headers: {
@@ -54,14 +53,11 @@ const MyRatings: React.FC = () => {
         
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            errorLog('Authentication error');
             navigate('/login');
             return;
           }
           
-          // Try to get more detailed error information
           const errorText = await response.text();
-          errorLog('Error response:', errorText);
           try {
             const errorData = JSON.parse(errorText);
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -71,12 +67,10 @@ const MyRatings: React.FC = () => {
         }
         
         const data = await response.json();
-        debugLog('Ratings data:', data);
         setRatings(data.ratings || []);
         setAverageRating(data.averageRating || 0);
         setTotalRatings(data.totalRatings || 0);
       } catch (error) {
-        errorLog('Error fetching ratings:', error);
         setError('Failed to load ratings. Please try again later.');
       } finally {
         setLoading(false);
@@ -94,56 +88,56 @@ const MyRatings: React.FC = () => {
     });
   };
 
-  // Function to render stars based on rating
   const renderStars = (rating: number) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <svg 
+        <Star 
           key={i} 
-          className={`h-5 w-5 ${i <= rating ? 'text-yellow-400' : 'text-gray-300'}`} 
-          fill="currentColor" 
-          viewBox="0 0 20 20"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
+          className={cn(
+            "h-5 w-5",
+            i <= rating ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/30"
+          )} 
+        />
       );
     }
     return stars;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header title="My Ratings & Reviews" />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 dark:border-blue-400"></div>
+          <div className="flex-1 flex justify-center items-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : error ? (
-          <div className="text-center py-10">
-            <p className="text-red-500 dark:text-red-400">{error}</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Ratings</h3>
+            <p className="text-muted-foreground mb-6">{error}</p>
             <button 
               onClick={() => window.location.reload()} 
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-6"
             >
-              Retry
+              Try Again
             </button>
           </div>
         ) : (
           <div className="space-y-8">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-              <div className="flex flex-col md:flex-row items-center justify-between">
-                <div className="flex flex-col items-center md:items-start mb-4 md:mb-0">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Overall Rating</h2>
-                  <p className="text-gray-600 dark:text-gray-400">Based on {totalRatings} review{totalRatings !== 1 ? 's' : ''}</p>
+            <div className="bg-card rounded-xl border border-border shadow-sm p-6 sm:p-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col items-center md:items-start text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-foreground mb-1">Your Overall Rating</h2>
+                  <p className="text-muted-foreground">Based on {totalRatings} review{totalRatings !== 1 ? 's' : ''}</p>
                 </div>
-                <div className="flex items-center">
-                  <div className="flex mr-2">
-                    {renderStars(averageRating)}
+                <div className="flex items-center gap-4 bg-muted/30 px-6 py-4 rounded-2xl border border-border/50">
+                  <div className="flex">
+                    {renderStars(Math.round(averageRating))}
                   </div>
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <span className="text-3xl font-bold text-foreground">
                     {averageRating.toFixed(1)}
                   </span>
                 </div>
@@ -151,55 +145,67 @@ const MyRatings: React.FC = () => {
             </div>
 
             {ratings.length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No ratings yet</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-xl border border-border border-dashed">
+                <Star className="h-12 w-12 text-muted-foreground opacity-50 mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No ratings yet</h3>
+                <p className="text-muted-foreground max-w-md">
                   You haven't received any ratings yet. As you complete assignments, clients will be able to rate your work.
                 </p>
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-foreground px-1">Recent Reviews</h3>
+                <div className="grid grid-cols-1 gap-4">
                   {ratings.map((rating) => (
-                    <li key={rating.id} className="p-6">
-                      <div className="flex items-start">
+                    <div key={rating.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden p-6 transition-all hover:shadow-md">
+                      <div className="flex flex-col sm:flex-row gap-5">
                         <div className="flex-shrink-0">
                           {rating.rater_profile_picture ? (
                             <img 
-                              className="h-12 w-12 rounded-full" 
+                              className="h-12 w-12 rounded-full border border-border object-cover" 
                               src={rating.rater_profile_picture} 
                               alt={`${rating.rater_name}'s profile`} 
                             />
                           ) : (
-                            <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                              <span className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                            <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center border border-border">
+                              <span className="text-muted-foreground text-lg font-medium">
                                 {rating.rater_name.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className="ml-4 flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{rating.rater_name}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(rating.created_at)}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                            <h3 className="text-base font-semibold text-foreground truncate">{rating.rater_name}</h3>
+                            <span className="text-sm text-muted-foreground shrink-0">{formatDate(rating.created_at)}</span>
                           </div>
-                          <div className="mt-1 flex">
+                          
+                          <div className="flex mb-3">
                             {renderStars(rating.rating)}
                           </div>
-                          <div className="mt-2">
-                            <p className="text-gray-700 dark:text-gray-300">{rating.comment || 'No comment provided'}</p>
-                          </div>
-                          <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                            <p>Assignment: {rating.course_name} ({rating.course_code}) - {rating.assignment_type}</p>
+                          
+                          {rating.comment ? (
+                            <div className="bg-muted/30 p-4 rounded-lg border border-border/50 mb-4">
+                              <div className="flex gap-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                <p className="text-sm text-foreground leading-relaxed">{rating.comment}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic mb-4">No comment provided</p>
+                          )}
+                          
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-secondary/50 w-fit px-3 py-1.5 rounded-md border border-border/50">
+                            <BookOpen className="h-3.5 w-3.5" />
+                            <span className="truncate max-w-[200px] sm:max-w-xs">{rating.course_name} ({rating.course_code})</span>
+                            <span className="mx-1">•</span>
+                            <span className="capitalize">{rating.assignment_type.replace('_', ' ')}</span>
                           </div>
                         </div>
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>

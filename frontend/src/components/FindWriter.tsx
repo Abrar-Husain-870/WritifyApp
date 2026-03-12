@@ -2,9 +2,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
-import { debugLog, errorLog } from '../utils/logUtil';
-
 import { GuestContext } from '../App';
+import { Star, Loader2, X, Send, User, ChevronRight, BookOpen, Clock, IndianRupee, FileText, Phone, Search, Paperclip } from 'lucide-react';
+import { cn } from '../utils/cn';
+import { Skeleton } from './ui/Skeleton';
+import { toast } from 'sonner';
 
 interface Writer {
     id: number;
@@ -40,15 +42,16 @@ const FindWriter: React.FC = () => {
         estimated_cost: 50,
         whatsapp_number: ''
     });
+    const [file, setFile] = useState<File | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [streamFilter, setStreamFilter] = useState('all');
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
 
     const { isGuest } = useContext(GuestContext);
 
     useEffect(() => {
         if (isGuest) {
-            // For guest users, provide sample writers (only active or busy writers)
             const sampleWriters: Writer[] = [
                 {
                     id: 1001,
@@ -77,14 +80,10 @@ const FindWriter: React.FC = () => {
                     university_stream: 'Engineering',
                     sample_work_image: 'https://lh3.googleusercontent.com/d/1mM9I1h7n2JhL2kHr8iPuEjlXC5YwSMmn'
                 }
-                // Note: We don't include any inactive writers in the sample data
             ];
-            debugLog('Showing sample writers for guest mode (all active or busy)');
             setWriters(sampleWriters);
             setLoading(false);
         } else {
-            // For registered users, fetch real writers
-            debugLog('Fetching writers from:', API.writers.all);
             fetch(API.writers.all, {
                 method: 'GET',
                 credentials: 'include',
@@ -95,40 +94,28 @@ const FindWriter: React.FC = () => {
             })
             .then(res => {
                 if (!res.ok) {
-                    errorLog(`Writers fetch failed with status: ${res.status}`);
-                    return res.text().then(text => {
-                        errorLog('Error response text:', text);
-                        throw new Error(`HTTP error! Status: ${res.status}`);
-                    });
+                    throw new Error(`HTTP error! Status: ${res.status}`);
                 }
                 return res.json();
             })
             .then(data => {
-                debugLog('Writers data received:', data);
                 let writersData = [];
-                
                 if (data && Array.isArray(data.writers)) {
                     writersData = data.writers;
                 } else if (data && Array.isArray(data)) {
-                    // Handle case where API returns array directly
                     writersData = data;
-                } else {
-                    errorLog('Unexpected writers data format:', data);
                 }
                 
-                // Filter out inactive writers
                 const activeWriters = writersData.filter((writer: Writer) => 
                     writer.writer_status === 'active' || writer.writer_status === 'busy'
                 );
                 
-                debugLog(`Filtered ${writersData.length - activeWriters.length} inactive writers, showing ${activeWriters.length} active/busy writers`);
                 setWriters(activeWriters);
                 setLoading(false);
             })
             .catch(error => {
-                errorLog('Error fetching writers:', error);
                 setLoading(false);
-                setError('Failed to load writers. Please try again later.');
+                toast.error('Failed to load writers. Please try again later.');
             });
         }
     }, [isGuest]);
@@ -136,9 +123,9 @@ const FindWriter: React.FC = () => {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'active': return 'bg-green-500';
-            case 'busy': return 'bg-red-500';
-            case 'inactive': return 'bg-gray-500';
-            default: return 'bg-gray-500';
+            case 'busy': return 'bg-amber-500';
+            case 'inactive': return 'bg-muted-foreground';
+            default: return 'bg-muted-foreground';
         }
     };
 
@@ -160,87 +147,73 @@ const FindWriter: React.FC = () => {
     };
 
     const validateForm = () => {
-        // Validate field lengths based on database constraints
         if (formData.course_name.length > 255) {
-            setError('Course name must be less than 255 characters');
+            toast.error('Course name must be less than 255 characters');
             return false;
         }
-        
         if (formData.course_code.length > 50) {
-            setError('Course code must be less than 50 characters');
+            toast.error('Course code must be less than 50 characters');
             return false;
         }
-        
         if (formData.assignment_type.length > 100) {
-            setError('Assignment type must be less than 100 characters');
+            toast.error('Assignment type must be less than 100 characters');
             return false;
         }
-        
-        // Validate numeric fields
         if (isNaN(parseInt(formData.num_pages.toString())) || parseInt(formData.num_pages.toString()) <= 0) {
-            setError('Number of pages must be a positive number');
+            toast.error('Number of pages must be a positive number');
             return false;
         }
-        
         if (isNaN(parseFloat(formData.estimated_cost.toString())) || parseFloat(formData.estimated_cost.toString()) % 50 !== 0) {
-            setError('Estimated cost must be a multiple of 50');
+            toast.error('Estimated cost must be a multiple of 50');
             return false;
         }
-        
         return true;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
-        setError(null);
-        setSuccess(null);
 
         if (isGuest) {
-            // For guest users, show a message that they need to sign in
-            setError('Sign in first to use this feature');
+            toast.error('Sign in first to use this feature');
             setSubmitting(false);
             return;
         }
 
-        // Validate form before submission
         if (!validateForm()) {
             setSubmitting(false);
             return;
         }
         
         try {
-            // Truncate values to match database constraints
-            const sanitizedData = {
-                ...formData,
-                course_name: formData.course_name.substring(0, 255),
-                course_code: formData.course_code.substring(0, 50),
-                assignment_type: formData.assignment_type.substring(0, 100),
-                num_pages: parseInt(formData.num_pages.toString()),
-                estimated_cost: parseFloat(formData.estimated_cost.toString())
-            };
+            const submitData = new FormData();
+            submitData.append('course_name', formData.course_name.substring(0, 255));
+            submitData.append('course_code', formData.course_code.substring(0, 50));
+            submitData.append('assignment_type', formData.assignment_type.substring(0, 100));
+            submitData.append('num_pages', parseInt(formData.num_pages.toString()).toString());
+            submitData.append('deadline', formData.deadline);
+            submitData.append('estimated_cost', parseFloat(formData.estimated_cost.toString()).toString());
+            submitData.append('whatsapp_number', formData.whatsapp_number);
+            if (file) {
+                submitData.append('attachment', file);
+            }
             
             const response = await fetch(API.assignmentRequests.create, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
                 credentials: 'include',
-                body: JSON.stringify(sanitizedData)
+                body: submitData
             });
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
 
-            const data = await response.json();
-            setSuccess('Your assignment request has been created successfully!');
+            toast.success('Your assignment request has been created successfully!');
             setTimeout(() => {
                 navigate('/my-assignments');
             }, 2000);
         } catch (error) {
-            console.error('Error creating assignment request:', error);
-            setError('Failed to create assignment request. Please try again.');
+            toast.error('Failed to create assignment request. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -248,245 +221,362 @@ const FindWriter: React.FC = () => {
 
     const handleWriterClick = (writerId: number) => {
         if (isGuest) {
-            // For guest users, show the form but will show a message when they try to submit
             setShowShareForm(true);
         } else {
             navigate(`/writer-profile/${writerId}`);
         }
     };
 
+    const uniqueStreams = Array.from(new Set(writers.map(w => w.university_stream))).filter(Boolean);
+
+    const filteredWriters = writers.filter(writer => {
+        const matchesSearch = writer.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              writer.university_stream.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || writer.writer_status === statusFilter;
+        const matchesStream = streamFilter === 'all' || writer.university_stream === streamFilter;
+        
+        return matchesSearch && matchesStatus && matchesStream;
+    });
+
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Header */}
+        <div className="min-h-screen bg-background flex flex-col">
             <Header title="Find a Writer" />
 
-            {/* Main content */}
-            <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 {loading ? (
-                    <div className="flex justify-center items-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <div className="space-y-8">
+                        <Skeleton className="h-32 w-full rounded-2xl" />
+                        <div className="flex items-center justify-between border-b border-border pb-4">
+                            <Skeleton className="h-8 w-48" />
+                            <Skeleton className="h-5 w-24" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className="bg-card rounded-xl border border-border overflow-hidden flex flex-col h-full">
+                                    <Skeleton className="h-48 w-full rounded-none" />
+                                    <div className="p-5 flex-1 flex flex-col gap-4">
+                                        <div className="flex justify-between items-start">
+                                            <Skeleton className="h-6 w-32" />
+                                            <Skeleton className="h-6 w-16 rounded-md" />
+                                        </div>
+                                        <Skeleton className="h-4 w-40" />
+                                        <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
+                                            <Skeleton className="h-4 w-24" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <>
                         {showShareForm ? (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Share Assignment Details with All Writers</h3>
+                            <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-foreground">Broadcast Assignment</h3>
+                                        <p className="text-sm text-muted-foreground mt-1">Share details with all available writers</p>
+                                    </div>
                                     <button 
                                         onClick={() => setShowShareForm(false)}
-                                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                        className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent hover:text-accent-foreground h-9 w-9"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
+                                        <X className="h-5 w-5" />
                                     </button>
                                 </div>
                                 
-                                <form onSubmit={handleSubmit} className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course Name</label>
-                                        <input
-                                            type="text"
-                                            name="course_name"
-                                            value={formData.course_name}
-                                            onChange={handleChange}
-                                            required
-                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Course Code</label>
-                                        <input
-                                            type="text"
-                                            name="course_code"
-                                            value={formData.course_code}
-                                            onChange={handleChange}
-                                            required
-                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assignment Type</label>
-                                        <select
-                                            name="assignment_type"
-                                            value={formData.assignment_type}
-                                            onChange={handleChange}
-                                            required
-                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="class_assignment">Class Assignment</option>
-                                            <option value="lab_files">Lab Files</option>
-                                            <option value="graphic_design">Graphic Design</option>
-                                            <option value="workshop_files">Workshop Files</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Number of Pages</label>
-                                        <input
-                                            type="number"
-                                            name="num_pages"
-                                            value={formData.num_pages}
-                                            onChange={handleChange}
-                                            required
-                                            min="1"
-                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Deadline</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="deadline"
-                                            value={formData.deadline}
-                                            onChange={handleChange}
-                                            required
-                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Cost (₹)</label>
-                                        <div className="mt-1">
-                                            <div className="flex items-center space-x-2">
-                                                <span className="text-gray-700 dark:text-gray-300 font-medium">₹50</span>
+                                <div className="p-6">
+                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
+                                                    <BookOpen className="h-4 w-4 text-muted-foreground" /> Course Name
+                                                </label>
                                                 <input
-                                                    type="range"
-                                                    name="estimated_cost"
-                                                    min="50"
-                                                    max="2500"
-                                                    step="50"
-                                                    value={formData.estimated_cost}
-                                                    onChange={(e) => {
-                                                        const value = parseInt(e.target.value);
-                                                        setFormData({
-                                                            ...formData,
-                                                            estimated_cost: value
-                                                        });
-                                                    }}
-                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                                    type="text"
+                                                    name="course_name"
+                                                    value={formData.course_name}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    placeholder="e.g. Data Structures"
                                                 />
-                                                <span className="text-gray-700 font-medium">₹2500</span>
                                             </div>
-                                            <div className="mt-2 text-center">
-                                                <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">₹{formData.estimated_cost}</span>
+
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-muted-foreground" /> Course Code
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="course_code"
+                                                    value={formData.course_code}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    placeholder="e.g. CS301"
+                                                />
                                             </div>
                                         </div>
-                                        <p className="mt-1 text-sm text-gray-500">
-                                            Drag the slider to set cost in multiples of ₹50
-                                        </p>
-                                    </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your WhatsApp Number</label>
-                                        <input
-                                            type="tel"
-                                            name="whatsapp_number"
-                                            value={formData.whatsapp_number}
-                                            onChange={handleChange}
-                                            required
-                                            placeholder="+91XXXXXXXXXX"
-                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                        />
-                                    </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Assignment Type</label>
+                                            <select
+                                                name="assignment_type"
+                                                value={formData.assignment_type}
+                                                onChange={handleChange}
+                                                required
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <option value="class_assignment">Class Assignment</option>
+                                                <option value="lab_files">Lab Files</option>
+                                                <option value="graphic_design">Graphic Design</option>
+                                                <option value="workshop_files">Workshop Files</option>
+                                            </select>
+                                        </div>
 
-                                    <div className="text-sm text-gray-500 italic">
-                                        <p>Note: Your request will be visible to all writers for 7 days. After that, it will expire and no longer be visible in the marketplace.</p>
-                                    </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Number of Pages</label>
+                                                <input
+                                                    type="number"
+                                                    name="num_pages"
+                                                    value={formData.num_pages}
+                                                    onChange={handleChange}
+                                                    required
+                                                    min="1"
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                />
+                                            </div>
 
-                                    {error && <p className="text-red-500">{error}</p>}
-                                    {success && <p className="text-green-500">{success}</p>}
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-muted-foreground" /> Deadline
+                                                </label>
+                                                <input
+                                                    type="datetime-local"
+                                                    name="deadline"
+                                                    value={formData.deadline}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                />
+                                            </div>
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                    >
-                                        {submitting ? 'Submitting...' : 'Submit Assignment Request'}
-                                    </button>
-                                </form>
+                                        <div className="space-y-4 bg-muted/30 p-4 rounded-lg border border-border">
+                                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
+                                                <IndianRupee className="h-4 w-4 text-muted-foreground" /> Estimated Cost
+                                            </label>
+                                            <div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-sm font-medium text-muted-foreground">₹50</span>
+                                                    <input
+                                                        type="range"
+                                                        name="estimated_cost"
+                                                        min="50"
+                                                        max="2500"
+                                                        step="50"
+                                                        value={formData.estimated_cost}
+                                                        onChange={(e) => {
+                                                            const value = parseInt(e.target.value);
+                                                            setFormData({
+                                                                ...formData,
+                                                                estimated_cost: value
+                                                            });
+                                                        }}
+                                                        className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                                                    />
+                                                    <span className="text-sm font-medium text-muted-foreground">₹2500</span>
+                                                </div>
+                                                <div className="mt-4 text-center">
+                                                    <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-lg">
+                                                        ₹{formData.estimated_cost}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
+                                                <Phone className="h-4 w-4 text-muted-foreground" /> Your WhatsApp Number
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                name="whatsapp_number"
+                                                value={formData.whatsapp_number}
+                                                onChange={handleChange}
+                                                required
+                                                placeholder="+91XXXXXXXXXX"
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Attachment (Optional)</label>
+                                            <div className="flex items-center gap-4">
+                                                <label className="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground transition-colors">
+                                                    <Paperclip className="h-4 w-4 mr-2" />
+                                                    {file ? file.name : "Choose a file"}
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                                    />
+                                                </label>
+                                                {file && (
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setFile(null)}
+                                                        className="text-sm text-destructive hover:underline whitespace-nowrap"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded-md border border-border/50">
+                                            <p>Note: Your request will be visible to all writers for 7 days. After that, it will expire and no longer be visible in the marketplace.</p>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={submitting}
+                                            className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-11 px-8 disabled:opacity-50"
+                                        >
+                                            {submitting ? (
+                                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
+                                            ) : (
+                                                <><Send className="mr-2 h-4 w-4" /> Submit Request</>
+                                            )}
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {/* Broadcast Assignment Request Card */}
+                            <div className="space-y-8">
+                                {/* Broadcast Card */}
                                 <div
                                     onClick={() => setShowShareForm(true)}
-                                    className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-indigo-900 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-blue-200 dark:border-blue-800 cursor-pointer"
+                                    className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:border-primary/50 transition-all cursor-pointer shadow-sm hover:shadow-md"
                                 >
-                                    <div className="h-48 w-full flex items-center justify-center relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-blue-500 opacity-10 dark:opacity-20"></div>
-                                        <div className="relative z-10 flex flex-col items-center justify-center space-y-3">
-                                            <div className="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                                                </svg>
-                                            </div>
-                                            <span className="px-4 py-1 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-full shadow-sm">Fast Response</span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
+                                        <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                                            <Send className="h-10 w-10 text-primary" />
                                         </div>
-                                    </div>
-                                    <div className="p-6">
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Broadcast Your Assignment</h3>
-                                        <p className="text-gray-600 dark:text-gray-400 mt-2 mb-4">Reach all available writers instantly and get multiple responses for your project</p>
-                                        <div className="flex items-center text-blue-600 dark:text-blue-400 group">
-                                            <span className="font-medium group-hover:underline">Create broadcast request</span>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                                            </svg>
+                                        <div className="flex-1 text-center sm:text-left">
+                                            <h3 className="text-2xl font-bold text-foreground mb-2">Broadcast Your Assignment</h3>
+                                            <p className="text-muted-foreground mb-4">Reach all available writers instantly and get multiple responses for your project. Perfect for urgent assignments.</p>
+                                            <span className="inline-flex items-center text-sm font-medium text-primary">
+                                                Create broadcast request <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Individual Writer Cards */}
-                                {writers.map(writer => (
-                                    <div
-                                        key={writer.id}
-                                        onClick={() => handleWriterClick(writer.id)}
-                                        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 transform hover:scale-105"
-                                    >
-                                        {/* Sample Work Image */}
-                                        <div className="w-full bg-gray-200 rounded-t-lg overflow-hidden shadow-inner" style={{ height: '420px', borderRadius: '0.5rem 0.5rem 0 0', border: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <img 
-                                                src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22565%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20565%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22565%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22280%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'}
-                                                alt={`${writer.name}'s sample work`}
-                                                className="w-full h-full object-cover rounded-t-lg transition-all duration-300 hover:scale-105"
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22565%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20565%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e96ddb7f%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e96ddb7f%22%3E%3Crect%20width%3D%22400%22%20height%3D%22565%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22120%22%20y%3D%22280%22%3EImage%20Not%20Found%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
-                                                    target.onerror = null; // Prevent infinite error loop
-                                                }}
-                                                loading="lazy"
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border pb-4 gap-4">
+                                    <h2 className="text-xl font-semibold text-foreground">Available Writers</h2>
+                                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                        <div className="relative w-full sm:w-64">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Search writers..." 
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                             />
                                         </div>
+                                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                                            <select 
+                                                value={statusFilter}
+                                                onChange={(e) => setStatusFilter(e.target.value)}
+                                                className="flex h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <option value="all">All Status</option>
+                                                <option value="active">Available</option>
+                                                <option value="busy">Busy</option>
+                                            </select>
+                                            <select 
+                                                value={streamFilter}
+                                                onChange={(e) => setStreamFilter(e.target.value)}
+                                                className="flex h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <option value="all">All Streams</option>
+                                                {uniqueStreams.map(stream => (
+                                                    <option key={stream} value={stream}>{stream}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                        {/* Writer Info */}
-                                        <div className="p-6">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{writer.name}</h3>
-                                                <div className="flex items-center">
-                                                    <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                    </svg>
-                                                    <span className="ml-1 text-gray-600">
-                                                        {typeof writer.rating === 'number' 
-                                                            ? writer.rating.toFixed(1) 
-                                                            : parseFloat(writer.rating as string).toFixed(1)} ({writer.total_ratings})
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {filteredWriters.map(writer => (
+                                        <div
+                                            key={writer.id}
+                                            onClick={() => handleWriterClick(writer.id)}
+                                            className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col h-full hover:-translate-y-1"
+                                        >
+                                            <div className="relative h-48 w-full bg-muted overflow-hidden">
+                                                <img 
+                                                    src={writer.sample_work_image || 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23f3f4f6%22%3E%3C%2Frect%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%3ENo%20Sample%20Work%3C%2Ftext%3E%3C%2Fsvg%3E'}
+                                                    alt={`${writer.name}'s sample work`}
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23f3f4f6%22%3E%3C%2Frect%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%3EImage%20Not%20Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+                                                    }}
+                                                    loading="lazy"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+
+                                            <div className="p-5 flex-1 flex flex-col">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h3 className="font-semibold text-lg text-foreground line-clamp-1">{writer.name}</h3>
+                                                    <div className="flex items-center gap-1 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-md border border-border text-sm">
+                                                        <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+                                                        <span className="font-medium">
+                                                            {typeof writer.rating === 'number' 
+                                                                ? writer.rating.toFixed(1) 
+                                                                : parseFloat(writer.rating as string).toFixed(1)}
+                                                        </span>
+                                                        <span className="text-muted-foreground text-xs">({writer.total_ratings})</span>
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-sm text-muted-foreground mb-4 line-clamp-1 flex items-center gap-1.5">
+                                                    <BookOpen className="h-3.5 w-3.5" />
+                                                    {writer.university_stream}
+                                                </p>
+
+                                                <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={cn("h-2.5 w-2.5 rounded-full", getStatusColor(writer.writer_status))} />
+                                                        <span className="text-sm font-medium text-muted-foreground">{getStatusText(writer.writer_status)}</span>
+                                                    </div>
+                                                    <span className="text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                                                        View <ChevronRight className="h-4 w-4 ml-0.5" />
                                                     </span>
                                                 </div>
                                             </div>
-
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">{writer.university_stream}</p>
-
-                                            {/* Status Indicator */}
-                                            <div className="flex items-center">
-                                                <div className={`h-3 w-3 rounded-full ${getStatusColor(writer.writer_status)} mr-2`}></div>
-                                                <span className="text-sm text-gray-600">{getStatusText(writer.writer_status)}</span>
-                                            </div>
                                         </div>
+                                    ))}
+                                </div>
+                                
+                                {filteredWriters.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center py-24 text-center bg-card/50 rounded-3xl border border-border border-dashed relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+                                        <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative z-10">
+                                            <User className="h-10 w-10 text-primary" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-foreground mb-3 relative z-10">No writers available</h3>
+                                        <p className="text-lg text-muted-foreground max-w-md relative z-10">There are currently no active writers. Try broadcasting your request instead.</p>
                                     </div>
-                                ))}
+                                )}
                             </div>
                         )}
                     </>

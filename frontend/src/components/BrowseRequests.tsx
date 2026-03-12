@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
-import { debugLog, errorLog } from '../utils/logUtil';
 import { exitGuestMode } from '../utils/auth';
+import { BookOpen, FileText, PenTool, Wrench, Loader2, AlertCircle, Trash2, CheckCircle2, Star, User, IndianRupee, Clock, FileDigit, Search, Paperclip } from 'lucide-react';
+import { cn } from '../utils/cn';
+import { Skeleton } from './ui/Skeleton';
 
 interface Client {
     id: number;
@@ -27,6 +29,7 @@ interface AssignmentRequest {
     status: 'open' | 'assigned' | 'completed';
     created_at: string;
     unique_id?: string;
+    attachment_url?: string;
 }
 
 const BrowseRequests: React.FC = () => {
@@ -39,12 +42,14 @@ const BrowseRequests: React.FC = () => {
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<number | null>(null);
     const [guestActionAttempt, setGuestActionAttempt] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [sortOrder, setSortOrder] = useState('newest');
 
     const { isGuest } = useContext(GuestContext);
 
     useEffect(() => {
         if (isGuest) {
-            // For guest users, provide sample assignment requests
             const sampleRequests: AssignmentRequest[] = [
                 {
                     id: 2001,
@@ -56,7 +61,7 @@ const BrowseRequests: React.FC = () => {
                     },
                     course_name: 'Introduction to Computer Science',
                     course_code: 'CS101',
-                    assignment_type: 'Essay',
+                    assignment_type: 'class_assignment',
                     num_pages: 5,
                     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                     expiration_deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -74,7 +79,7 @@ const BrowseRequests: React.FC = () => {
                     },
                     course_name: 'Business Ethics',
                     course_code: 'BUS205',
-                    assignment_type: 'Research Paper',
+                    assignment_type: 'lab_files',
                     num_pages: 8,
                     deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
                     expiration_deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -92,7 +97,7 @@ const BrowseRequests: React.FC = () => {
                     },
                     course_name: 'Advanced Database Systems',
                     course_code: 'CS305',
-                    assignment_type: 'Programming Assignment',
+                    assignment_type: 'workshop_files',
                     num_pages: 3,
                     deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
                     expiration_deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -102,18 +107,14 @@ const BrowseRequests: React.FC = () => {
                 }
             ];
             setRequests(sampleRequests);
-            setCurrentUserId(1000); // Dummy ID for guest
+            setCurrentUserId(1000);
             setLoading(false);
         } else {
-            // For registered users, fetch real data
-            // Fetch the current user's profile to get their ID
             fetch(API.users.profile, {
                 credentials: 'include'
             })
             .then(res => {
-                if (res.ok) {
-                    return res.json();
-                }
+                if (res.ok) return res.json();
                 throw new Error('Failed to fetch user profile');
             })
             .then(data => {
@@ -123,8 +124,6 @@ const BrowseRequests: React.FC = () => {
                 console.error('Error fetching user profile', err);
             })
             .finally(() => {
-                // Fetch assignment requests
-                debugLog('Fetching assignment requests from:', API.assignmentRequests.all);
                 fetch(API.assignmentRequests.all, {
                     method: 'GET',
                     credentials: 'include',
@@ -135,29 +134,23 @@ const BrowseRequests: React.FC = () => {
                 })
                 .then(res => {
                     if (!res.ok) {
-                        errorLog(`Requests fetch failed with status: ${res.status}`);
                         return res.text().then(text => {
-                            errorLog('Error response text:', text);
                             throw new Error(`HTTP error! Status: ${res.status}`);
                         });
                     }
                     return res.json();
                 })
                 .then(data => {
-                    debugLog('Assignment requests data received:', data);
                     if (data && Array.isArray(data.requests)) {
                         setRequests(data.requests);
                     } else if (data && Array.isArray(data)) {
-                        // Handle case where API returns array directly
                         setRequests(data);
                     } else {
-                        errorLog('Unexpected assignment requests data format:', data);
                         setRequests([]);
                     }
                     setLoading(false);
                 })
                 .catch(error => {
-                    errorLog('Error fetching assignment requests:', error);
                     setLoading(false);
                     setError('Failed to load assignment requests. Please try again later.');
                 });
@@ -165,39 +158,19 @@ const BrowseRequests: React.FC = () => {
         }
     }, [isGuest]);
 
-    const getAssignmentTypeIcon = (type: string) => {
+    const getAssignmentTypeInfo = (type: string) => {
         switch (type) {
             case 'class_assignment':
-                return (
-                    <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                );
+                return { icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Class Assignment' };
             case 'lab_files':
-                return (
-                    <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                    </svg>
-                );
+                return { icon: FileText, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Lab Files' };
             case 'graphic_design':
-                return (
-                    <svg className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                );
+                return { icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-500/10', label: 'Graphic Design' };
             case 'workshop_files':
-                return (
-                    <svg className="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                    </svg>
-                );
+                return { icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-500/10', label: 'Workshop Files' };
             default:
-                return null;
+                return { icon: FileText, color: 'text-gray-500', bg: 'bg-gray-500/10', label: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') };
         }
-    };
-
-    const formatAssignmentType = (type: string) => {
-        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
 
     const handleAcceptRequest = async (requestId: number) => {
@@ -205,7 +178,6 @@ const BrowseRequests: React.FC = () => {
         setError(null);
 
         if (isGuest) {
-            // For guest users, show an inline message that they need to sign in
             setGuestActionAttempt(requestId);
             setAcceptingId(null);
             return;
@@ -221,82 +193,44 @@ const BrowseRequests: React.FC = () => {
             });
 
             if (!response.ok) {
-                // Try to get the detailed error message from the response
                 const errorText = await response.text();
                 let errorMessage = `HTTP error! Status: ${response.status}`;
-                
                 try {
-                    // Try to parse the error as JSON
                     const errorJson = JSON.parse(errorText);
-                    if (errorJson.error) {
-                        errorMessage = errorJson.error;
-                    }
+                    if (errorJson.error) errorMessage = errorJson.error;
                 } catch (e) {
-                    // If parsing fails, use the raw text if available
-                    if (errorText) {
-                        errorMessage = errorText;
-                    }
+                    if (errorText) errorMessage = errorText;
                 }
-                
                 throw new Error(errorMessage);
             }
 
             const data = await response.json();
-            debugLog('API Response data:', data);
             
-            // Remove the accepted request from the list
             setRequests(requests.filter(req => req.id !== requestId));
-            
-            // Find the request that was accepted
             const acceptedRequest = requests.find(req => req.id === requestId);
-            debugLog('Accepted request:', acceptedRequest);
-            // Process client data without logging sensitive information
             
             if (acceptedRequest) {
-                // Create a WhatsApp message with assignment details
                 const message = `Hi, I've accepted your assignment request for ${acceptedRequest.course_name} (${acceptedRequest.course_code})${acceptedRequest.unique_id ? ` [ID: ${acceptedRequest.unique_id}]` : ''}. Let's discuss the details.`;
                 
-                // Get the client's WhatsApp number from the API response
-                // First try to use the redirect number, then fall back to the regular number
-                // With our updated backend, both should now contain the full number
                 let phoneNumber = data.client_whatsapp_redirect || data.client_whatsapp || '';
-                
-                // Clean the phone number to contain only digits
                 phoneNumber = phoneNumber.replace(/\D/g, '');
                 
-                // Format the phone number for WhatsApp
-                
-                // Check if WhatsApp number is available
                 if (!phoneNumber) {
-                    // If the redirect number is not available, try to get it from the client_whatsapp field
-                    // and extract digits from it if possible
-                    // With our updated backend, we should have the full phone number
-                    // But as a fallback, try to extract any digits from the client_whatsapp field
                     if (data.client_whatsapp) {
                         const extractedDigits = data.client_whatsapp.replace(/\D/g, '');
                         if (extractedDigits.length >= 10) {
-                            // We have at least 10 digits (a complete phone number), use it
                             phoneNumber = extractedDigits;
-                            // Using complete phone number from client_whatsapp
                         } else if (extractedDigits.length >= 4) {
-                            // We have some digits, but not enough for a complete number
-                            // Extracted partial digits from client_whatsapp
-                            
-                            // Show a helpful message
                             const confirmContact = window.confirm(
                                 `Only partial phone number is available (ending in: ${extractedDigits}). \n\n` +
                                 `Please check your assignments page for more contact details. \n\n` +
                                 `Would you like to go to your assignments page now?`
                             );
-                            
-                            if (confirmContact) {
-                                navigate('/my-assignments');
-                            }
+                            if (confirmContact) navigate('/my-assignments');
                             return;
                         }
                     }
                     
-                    // If we still don't have a phone number, show an alert
                     if (!phoneNumber) {
                         alert('The client has not added their WhatsApp number. Please check your assignments page for contact details.');
                         navigate('/my-assignments');
@@ -304,9 +238,7 @@ const BrowseRequests: React.FC = () => {
                     }
                 }
                 
-                // Ensure the number has the country code
                 if (phoneNumber.length === 10) {
-                    // Add country code (for India) if not already present
                     phoneNumber = '91' + phoneNumber;
                 } else if (phoneNumber.length < 10) {
                     alert('The client has an invalid phone number. Please check your assignments page for contact details.');
@@ -314,25 +246,14 @@ const BrowseRequests: React.FC = () => {
                     return;
                 }
                 
-                // Create WhatsApp URL with the formatted phone number
                 const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+                if (phoneNumber) window.open(whatsappUrl, '_blank');
                 
-                // Open WhatsApp in a new tab
-                if (phoneNumber) {
-                    window.open(whatsappUrl, '_blank');
-                } else {
-                    // If no phone number is available, show an alert
-                    alert('Client WhatsApp number is not available. Please check the My Assignments page for contact details.');
-                }
-                
-                // Also navigate to assignments page as a fallback
                 navigate('/my-assignments');
             } else {
-                // If for some reason the request can't be found, just navigate to assignments
                 navigate('/my-assignments');
             }
         } catch (error) {
-            errorLog('Error accepting assignment request:', error);
             setError('Failed to accept assignment request. Please try again.');
         } finally {
             setAcceptingId(null);
@@ -351,7 +272,6 @@ const BrowseRequests: React.FC = () => {
             });
 
             if (response.ok) {
-                // Remove the deleted request from the state
                 setRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
                 setShowDeleteConfirmation(null);
             } else {
@@ -359,201 +279,292 @@ const BrowseRequests: React.FC = () => {
                 alert(`Error: ${errorData.error || 'Failed to delete request'}`);
             }
         } catch (error) {
-            console.error('Error deleting request:', error);
             alert('Failed to delete request. Please try again.');
         } finally {
             setDeletingId(null);
         }
     };
 
-    // Check if the current user is the client who created the request
     const isClientRequest = (request: AssignmentRequest) => {
         return currentUserId === request.client.id;
     };
 
+    const uniqueTypes = Array.from(new Set(requests.map(r => r.assignment_type))).filter(Boolean);
+
+    const filteredAndSortedRequests = requests
+        .filter(request => {
+            const matchesSearch = request.course_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                  request.course_code.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesType = typeFilter === 'all' || request.assignment_type === typeFilter;
+            return matchesSearch && matchesType;
+        })
+        .sort((a, b) => {
+            if (sortOrder === 'newest') {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            } else if (sortOrder === 'oldest') {
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            } else if (sortOrder === 'deadline_soon') {
+                return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+            } else if (sortOrder === 'highest_price') {
+                return b.estimated_cost - a.estimated_cost;
+            }
+            return 0;
+        });
+
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Header */}
+        <div className="min-h-screen bg-background flex flex-col">
             <Header title="Browse Requests" />
 
-            {/* Main content */}
-            <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 {loading ? (
-                    <div className="flex justify-center items-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
+                            <Skeleton className="h-8 w-48" />
+                            <Skeleton className="h-6 w-24 rounded-full" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                <div key={i} className="bg-card rounded-xl border border-border overflow-hidden flex flex-col h-full">
+                                    <div className="p-5 flex-1 space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <Skeleton className="h-10 w-10 rounded-lg" />
+                                            <Skeleton className="h-6 w-24 rounded-full" />
+                                        </div>
+                                        <Skeleton className="h-6 w-3/4" />
+                                        <div className="flex gap-2">
+                                            <Skeleton className="h-5 w-16" />
+                                        </div>
+                                        <div className="space-y-3 pt-2">
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-full" />
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-muted/20 border-t border-border mt-auto">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Skeleton className="h-8 w-8 rounded-full" />
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-24" />
+                                                <Skeleton className="h-3 w-16" />
+                                            </div>
+                                        </div>
+                                        <Skeleton className="h-9 w-full rounded-md" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : error ? (
-                    <div className="col-span-full text-center py-12">
-                        <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Error Loading Requests</h3>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error}</p>
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Requests</h3>
+                        <p className="text-muted-foreground mb-6">{error}</p>
                         <button 
                             onClick={() => window.location.reload()} 
-                            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-6"
                         >
                             Try Again
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {requests.length === 0 ? (
-                            <div className="col-span-full text-center py-12">
-                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No assignment requests</h3>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">There are no open assignment requests at the moment.</p>
+                    <>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border pb-4 mb-6 gap-4">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-semibold text-foreground">Open Requests</h2>
+                                <span className="text-sm font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                                    {filteredAndSortedRequests.length} available
+                                </span>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                <div className="relative w-full sm:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search course..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <select 
+                                        value={typeFilter}
+                                        onChange={(e) => setTypeFilter(e.target.value)}
+                                        className="flex h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="all">All Types</option>
+                                        {uniqueTypes.map(type => (
+                                            <option key={type} value={type}>{getAssignmentTypeInfo(type).label}</option>
+                                        ))}
+                                    </select>
+                                    <select 
+                                        value={sortOrder}
+                                        onChange={(e) => setSortOrder(e.target.value)}
+                                        className="flex h-10 w-full sm:w-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="deadline_soon">Deadline Soon</option>
+                                        <option value="highest_price">Highest Price</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {filteredAndSortedRequests.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-24 text-center bg-card/50 rounded-3xl border border-border border-dashed relative overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+                                <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative z-10">
+                                    <FileText className="h-10 w-10 text-primary" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-foreground mb-3 relative z-10">No assignment requests</h3>
+                                <p className="text-lg text-muted-foreground max-w-md relative z-10">There are no open assignment requests at the moment. Check back later!</p>
                             </div>
                         ) : (
-                            requests.map(request => (
-                                <div key={request.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                                    <div className="p-6">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{request.course_name}</h3>
-                                                <div className="flex items-center">
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{request.course_code}</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredAndSortedRequests.map(request => {
+                                    const typeInfo = getAssignmentTypeInfo(request.assignment_type);
+                                    const TypeIcon = typeInfo.icon;
+                                    
+                                    return (
+                                        <div key={request.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col h-full group hover:border-primary/30">
+                                            <div className="p-5 flex-1">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className={cn("p-2.5 rounded-lg shrink-0", typeInfo.bg)}>
+                                                        <TypeIcon className={cn("h-5 w-5", typeInfo.color)} />
+                                                    </div>
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+                                                        {typeInfo.label}
+                                                    </span>
+                                                </div>
+                                                
+                                                <h3 className="text-lg font-bold text-foreground mb-1 line-clamp-1 group-hover:text-primary transition-colors">{request.course_name}</h3>
+                                                <div className="flex items-center gap-2 mb-5">
+                                                    <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{request.course_code}</span>
                                                     {request.unique_id && (
-                                                        <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                                                            ID: {request.unique_id}
+                                                        <span className="text-xs font-medium text-muted-foreground flex items-center">
+                                                            <FileDigit className="h-3 w-3 mr-1" /> ID: {request.unique_id}
                                                         </span>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                                                    {formatAssignmentType(request.assignment_type)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="mt-4 space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-500 dark:text-gray-400">Pages:</span>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{request.num_pages}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-500 dark:text-gray-400">Deadline:</span>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                    {new Date(request.deadline).toLocaleDateString()} 
-                                                    ({Math.ceil((new Date(request.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left)
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-500 dark:text-gray-400">Estimated Cost:</span>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">₹{request.estimated_cost}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm text-gray-500 dark:text-gray-400">Expires:</span>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                    {(() => {
-                                                        // If expiration_deadline exists, use it
-                                                        if (request.expiration_deadline) {
-                                                            const expirationDate = new Date(request.expiration_deadline);
-                                                            const daysLeft = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                                            return `${expirationDate.toLocaleDateString()} (${Math.max(0, daysLeft)} days)`;
-                                                        }
-                                                        
-                                                        // Otherwise calculate it as 7 days from creation date
-                                                        const creationDate = new Date(request.created_at);
-                                                        const expirationDate = new Date(creationDate);
-                                                        expirationDate.setDate(creationDate.getDate() + 7);
-                                                        const daysLeft = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                                        // Ensure we don't show negative days
-                                                        return `${expirationDate.toLocaleDateString()} (${Math.max(0, daysLeft)} days)`;
-                                                    })()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                            <div className="flex items-center">
-                                                <div className="flex-shrink-0">
-                                                    <svg className="h-10 w-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                                                    </svg>
-                                                </div>
-                                                <div className="ml-3">
-                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                        {request.client.name}
-                                                    </p>
-                                                    <div className="flex items-center">
-                                                        <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                        </svg>
-                                                        <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">
-                                                            {request.client.rating 
-                                                                ? (typeof request.client.rating === 'number' 
-                                                                    ? request.client.rating.toFixed(1) 
-                                                                    : parseFloat(String(request.client.rating)).toFixed(1))
-                                                                : 'N/A'} ({request.client.total_ratings || 0})
+                                                
+                                                <div className="space-y-3 mb-6">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-muted-foreground flex items-center"><FileText className="h-4 w-4 mr-2" /> Pages</span>
+                                                        <span className="font-medium text-foreground">{request.num_pages}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-muted-foreground flex items-center"><IndianRupee className="h-4 w-4 mr-2" /> Est. Cost</span>
+                                                        <span className="font-semibold text-primary">₹{request.estimated_cost}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-muted-foreground flex items-center"><Clock className="h-4 w-4 mr-2" /> Deadline</span>
+                                                        <span className="font-medium text-foreground">
+                                                            {new Date(request.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                            <span className="text-xs text-muted-foreground ml-1">
+                                                                ({Math.ceil((new Date(request.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d left)
+                                                            </span>
                                                         </span>
                                                     </div>
+                                                    {request.attachment_url && (
+                                                        <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
+                                                            <span className="text-muted-foreground flex items-center"><Paperclip className="h-4 w-4 mr-2" /> Attachment</span>
+                                                            <a 
+                                                                href={`http://localhost:5000${request.attachment_url}`} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="font-medium text-primary hover:underline flex items-center"
+                                                            >
+                                                                View File
+                                                            </a>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </div>
-                                        
-                                        <div className="mt-6 space-y-2">
-                                            {guestActionAttempt === request.id && isGuest && (
-                                                <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-md">
-                                                    <p className="text-sm text-yellow-700 dark:text-yellow-200 text-center">
-                                                        Please <button 
-                                                            onClick={() => {
-                                                                exitGuestMode();
-                                                            }} 
-                                                            className="font-medium text-blue-600 hover:text-blue-800 underline"
-                                                        >sign in</button> first to use this feature
-                                                    </p>
+                                            
+                                            <div className="p-4 bg-muted/20 border-t border-border mt-auto">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border">
+                                                            <User className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-foreground line-clamp-1">{request.client.name}</p>
+                                                            <div className="flex items-center text-xs text-muted-foreground">
+                                                                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-1" />
+                                                                {request.client.rating ? Number(request.client.rating).toFixed(1) : 'New'} 
+                                                                <span className="ml-1">({request.client.total_ratings || 0})</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
-                                            {isClientRequest(request) && request.status === 'open' ? (
-                                                <button
-                                                    onClick={() => setShowDeleteConfirmation(request.id)}
-                                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                                >
-                                                    Delete Request
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleAcceptRequest(request.id)}
-                                                    disabled={acceptingId === request.id}
-                                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                                                >
-                                                    {acceptingId === request.id ? 'Accepting...' : 'Accept Request'}
-                                                </button>
-                                            )}
+                                                
+                                                {guestActionAttempt === request.id && isGuest && (
+                                                    <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-800 dark:text-yellow-200 text-center">
+                                                        Please <button onClick={exitGuestMode} className="font-semibold underline">sign in</button> to accept
+                                                    </div>
+                                                )}
+                                                
+                                                {isClientRequest(request) && request.status === 'open' ? (
+                                                    <button
+                                                        onClick={() => setShowDeleteConfirmation(request.id)}
+                                                        className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground h-9"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 mr-2" /> Delete Request
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleAcceptRequest(request.id)}
+                                                        disabled={acceptingId === request.id}
+                                                        className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 disabled:opacity-50"
+                                                    >
+                                                        {acceptingId === request.id ? (
+                                                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Accepting...</>
+                                                        ) : (
+                                                            <><CheckCircle2 className="h-4 w-4 mr-2" /> Accept Request</>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                            ))
+                                    );
+                                })}
+                            </div>
                         )}
-                    </div>
+                    </>
                 )}
             </main>
+
             {/* Delete Confirmation Modal */}
             {showDeleteConfirmation && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Delete</h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
-                            Are you sure you want to delete this assignment request? This action cannot be undone.
-                        </p>
-                        <div className="flex space-x-4">
-                            <button
-                                onClick={() => setShowDeleteConfirmation(null)}
-                                className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => showDeleteConfirmation && handleDeleteRequest(showDeleteConfirmation)}
-                                disabled={deletingId !== null}
-                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                            >
-                                {deletingId !== null ? 'Deleting...' : 'Delete'}
-                            </button>
+                <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-card border border-border shadow-lg rounded-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 text-destructive mb-4">
+                                <AlertCircle className="h-6 w-6" />
+                                <h3 className="text-lg font-semibold">Confirm Delete</h3>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Are you sure you want to delete this assignment request? This action cannot be undone.
+                            </p>
+                            
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+                                <button
+                                    onClick={() => setShowDeleteConfirmation(null)}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => showDeleteConfirmation && handleDeleteRequest(showDeleteConfirmation)}
+                                    disabled={deletingId !== null}
+                                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 disabled:opacity-50"
+                                >
+                                    {deletingId !== null ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                                    {deletingId !== null ? 'Deleting...' : 'Delete'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
