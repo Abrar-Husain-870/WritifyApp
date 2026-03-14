@@ -29,27 +29,6 @@ const crypto = require('crypto');
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
 const path = require('path');
-const multer = require('multer');
-const fs = require('fs');
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, 'uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
-});
 
 // Configuration
 const ASSIGNMENT_EXPIRATION_DAYS = 7; // Assignment requests expire after 7 days
@@ -744,9 +723,8 @@ app.get('/api/writers/:id', isAuthenticated, async (req, res) => {
     }
 });
 
-app.post('/api/assignment-requests', isAuthenticated, upload.single('attachment'), async (req, res) => {
+app.post('/api/assignment-requests', isAuthenticated, async (req, res) => {
     const { course_name, course_code, assignment_type, num_pages, deadline, estimated_cost } = req.body;
-    const attachmentUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     try {
         // Validate required fields
@@ -796,8 +774,8 @@ app.post('/api/assignment-requests', isAuthenticated, upload.single('attachment'
 
         const result = await pool.query(`
             INSERT INTO assignment_requests 
-            (client_id, course_name, course_code, assignment_type, num_pages, deadline, estimated_cost, status, unique_id, attachment_url)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8, $9)
+            (client_id, course_name, course_code, assignment_type, num_pages, deadline, estimated_cost, status, unique_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8)
             RETURNING *
         `, [
             sanitizedData.client_id, 
@@ -807,8 +785,7 @@ app.post('/api/assignment-requests', isAuthenticated, upload.single('attachment'
             sanitizedData.num_pages, 
             sanitizedData.deadline, 
             sanitizedData.estimated_cost,
-            sanitizedData.unique_id,
-            attachmentUrl
+            sanitizedData.unique_id
         ]);
         
         res.status(201).json(result.rows[0]);
@@ -842,7 +819,6 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
                 ar.status,
                 ar.created_at,
                 ar.unique_id,
-                ar.attachment_url,
                 u.id as client_id,
                 u.name as client_name,
                 u.rating as client_rating,
@@ -873,8 +849,7 @@ app.get('/api/assignment-requests', isAuthenticated, async (req, res) => {
             estimated_cost: req.estimated_cost,
             status: req.status,
             created_at: req.created_at,
-            unique_id: req.unique_id,
-            attachment_url: req.attachment_url
+            unique_id: req.unique_id
         }));
 
         console.log(`Found ${transformedRequests.length} open assignment requests`);
@@ -1036,12 +1011,6 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
             }
         }
         
-        // Notify client
-        await pool.query(
-            'INSERT INTO notifications (user_id, title, message) VALUES ($1, $2, $3)',
-            [client.id, 'Assignment Accepted', `Your assignment request for ${request.course_name} has been accepted by a writer.`]
-        );
-        
         // Return success with client WhatsApp number for direct contact
         // With our new approach, we're sending the full phone number for better WhatsApp integration
         res.json({
@@ -1135,7 +1104,6 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     ar.num_pages,
                     ar.deadline,
                     ar.estimated_cost,
-                    ar.attachment_url,
                     a.created_at,
                     COALESCE(a.status, 'pending') as status,
                     a.completed_at,
@@ -1207,7 +1175,6 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                 num_pages: a.num_pages,
                 deadline: a.deadline,
                 estimated_cost: a.estimated_cost,
-                attachment_url: a.attachment_url,
                 // Check if client has rated the writer
                 has_rated_writer: a.writer_id ? ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.writer_id : false,
                 has_rated_client: false // Clients don't rate themselves
@@ -1228,7 +1195,6 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     ar.num_pages,
                     ar.deadline,
                     ar.estimated_cost,
-                    ar.attachment_url,
                     a.created_at,
                     a.status,
                     a.completed_at,
@@ -1300,7 +1266,6 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                 num_pages: a.num_pages,
                 deadline: a.deadline,
                 estimated_cost: a.estimated_cost,
-                attachment_url: a.attachment_url,
                 has_rated_writer: false, // Writers don't rate themselves
                 // Check if writer has rated the client
                 has_rated_client: ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.client_id
@@ -1757,12 +1722,6 @@ app.put('/api/assignments/:id/complete', isAuthenticated, async (req, res) => {
             ['completed', assignmentId]
         );
         
-        // Notify client
-        await pool.query(
-            'INSERT INTO notifications (user_id, title, message) VALUES ($1, $2, $3)',
-            [assignment.client_id, 'Assignment Completed', 'Your assignment has been marked as completed by the writer.']
-        );
-        
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error completing assignment:', error);
@@ -1770,33 +1729,6 @@ app.put('/api/assignments/:id/complete', isAuthenticated, async (req, res) => {
     }
 });
 
-// Get user notifications
-app.get('/api/notifications', isAuthenticated, async (req, res) => {
-    try {
-        const result = await pool.query(
-            'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
-            [req.user.id]
-        );
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Error fetching notifications:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Mark notification as read
-app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
-    try {
-        await pool.query(
-            'UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2',
-            [req.params.id, req.user.id]
-        );
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error marking notification as read:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
 
 // Test endpoint - no authentication required
 app.get('/api/test', (req, res) => {

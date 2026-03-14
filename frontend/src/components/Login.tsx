@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { API } from '../utils/api';
-import { AlertCircle, Loader2, User, BookOpen, Quote } from 'lucide-react';
+import { AlertCircle, Loader2, Quote, User } from 'lucide-react';
 import { cn } from '../utils/cn';
+import Logo from './Logo';
 
 interface LoginProps {}
 
@@ -135,11 +136,8 @@ const Login: React.FC<LoginProps> = () => {
                 <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] mix-blend-screen"></div>
                 
                 {/* Logo */}
-                <div className="relative z-10 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center backdrop-blur-md border border-primary/30">
-                        <BookOpen className="h-6 w-6 text-primary" />
-                    </div>
-                    <span className="text-2xl font-bold tracking-tight">Writify</span>
+                <div className="relative z-10">
+                    <Logo textClassName="text-white" />
                 </div>
 
                 {/* Content */}
@@ -168,11 +166,8 @@ const Login: React.FC<LoginProps> = () => {
                 
                 <div className="w-full max-w-md space-y-10">
                     {/* Mobile Logo */}
-                    <div className="flex items-center gap-3 lg:hidden justify-center mb-8">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                            <BookOpen className="h-7 w-7 text-primary" />
-                        </div>
-                        <span className="text-3xl font-bold tracking-tight text-foreground">Writify</span>
+                    <div className="flex items-center justify-center lg:hidden mb-8">
+                        <Logo />
                     </div>
 
                     <div className="text-center lg:text-left">

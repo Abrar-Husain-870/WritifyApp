@@ -4,7 +4,7 @@ import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
 import { exitGuestMode } from '../utils/auth';
-import { BookOpen, FileText, PenTool, Wrench, Loader2, AlertCircle, Trash2, CheckCircle2, Star, User, IndianRupee, Clock, FileDigit, Search, Paperclip } from 'lucide-react';
+import { BookOpen, FileText, PenTool, Wrench, Loader2, AlertCircle, Trash2, CheckCircle2, Star, User, IndianRupee, Clock, FileDigit, Search } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { Skeleton } from './ui/Skeleton';
 
@@ -29,7 +29,6 @@ interface AssignmentRequest {
     status: 'open' | 'assigned' | 'completed';
     created_at: string;
     unique_id?: string;
-    attachment_url?: string;
 }
 
 const BrowseRequests: React.FC = () => {
@@ -162,12 +161,16 @@ const BrowseRequests: React.FC = () => {
         switch (type) {
             case 'class_assignment':
                 return { icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Class Assignment' };
-            case 'lab_files':
-                return { icon: FileText, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Lab Files' };
-            case 'graphic_design':
-                return { icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-500/10', label: 'Graphic Design' };
-            case 'workshop_files':
+            case 'lab_file':
+                return { icon: FileDigit, color: 'text-purple-500', bg: 'bg-purple-500/10', label: 'Lab File' };
+            case 'workshop_file':
                 return { icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-500/10', label: 'Workshop Files' };
+            case 'graphics_sheet':
+                return { icon: PenTool, color: 'text-pink-500', bg: 'bg-pink-500/10', label: 'Graphics Sheet' };
+            case 'notes':
+                return { icon: FileText, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Notes' };
+            case 'project_report':
+                return { icon: FileText, color: 'text-amber-500', bg: 'bg-amber-500/10', label: 'Project Report' };
             default:
                 return { icon: FileText, color: 'text-gray-500', bg: 'bg-gray-500/10', label: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') };
         }
@@ -467,19 +470,6 @@ const BrowseRequests: React.FC = () => {
                                                             </span>
                                                         </span>
                                                     </div>
-                                                    {request.attachment_url && (
-                                                        <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
-                                                            <span className="text-muted-foreground flex items-center"><Paperclip className="h-4 w-4 mr-2" /> Attachment</span>
-                                                            <a 
-                                                                href={`http://localhost:5000${request.attachment_url}`} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer"
-                                                                className="font-medium text-primary hover:underline flex items-center"
-                                                            >
-                                                                View File
-                                                            </a>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
                                             

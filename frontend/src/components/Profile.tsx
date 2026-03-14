@@ -310,13 +310,29 @@ const Profile: React.FC = () => {
                                 <div className="space-y-5">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-1.5">University Stream</label>
-                                        <input
-                                            type="text"
+                                        <select
                                             value={user.university_stream || ''}
                                             onChange={(e) => setUser({ ...user, university_stream: e.target.value })}
-                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                            placeholder="e.g. B.Tech CSE"
-                                        />
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="" disabled>Select your stream</option>
+                                            <option value="B.Tech - Computer Science">B.Tech - Computer Science</option>
+                                            <option value="B.Tech - Information Technology">B.Tech - Information Technology</option>
+                                            <option value="B.Tech - Electronics & Communication">B.Tech - Electronics & Communication</option>
+                                            <option value="B.Tech - Mechanical">B.Tech - Mechanical</option>
+                                            <option value="B.Tech - Civil">B.Tech - Civil</option>
+                                            <option value="B.Tech - Electrical">B.Tech - Electrical</option>
+                                            <option value="B.Tech - Biotechnology">B.Tech - Biotechnology</option>
+                                            <option value="Bachelor of Business Administration (BBA)">Bachelor of Business Administration (BBA)</option>
+                                            <option value="Bachelor of Computer Applications (BCA)">Bachelor of Computer Applications (BCA)</option>
+                                            <option value="Bachelor of Arts (BA)">Bachelor of Arts (BA)</option>
+                                            <option value="Bachelor of Science (BSc)">Bachelor of Science (BSc)</option>
+                                            <option value="Bachelor of Commerce (BCom)">Bachelor of Commerce (BCom)</option>
+                                            <option value="Master of Technology (M.Tech)">Master of Technology (M.Tech)</option>
+                                            <option value="Master of Business Administration (MBA)">Master of Business Administration (MBA)</option>
+                                            <option value="Master of Computer Applications (MCA)">Master of Computer Applications (MCA)</option>
+                                            <option value="Other">Other</option>
+                                        </select>
                                     </div>
 
                                     <div>

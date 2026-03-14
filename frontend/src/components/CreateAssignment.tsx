@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
-import { Loader2, Send, Paperclip } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { toast } from 'sonner';
+import { API } from '../utils/api';
+import { GuestContext } from '../App';
 
 interface AssignmentData {
     title: string;
     description: string;
     subject: string;
+    assignment_type: string;
     deadline: string;
     budget: number;
 }
@@ -20,31 +23,49 @@ const CreateAssignment: React.FC = () => {
         title: '',
         description: '',
         subject: '',
+        assignment_type: 'class_assignment',
         deadline: '',
         budget: 0
     });
-    const [file, setFile] = useState<File | null>(null);
+    const [userStream, setUserStream] = useState<string>('');
+    const { isGuest } = React.useContext(GuestContext);
+
+    React.useEffect(() => {
+        if (!isGuest) {
+            fetch(`${API.baseUrl}/api/users/profile`, {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.university_stream) {
+                    setUserStream(data.university_stream);
+                }
+            })
+            .catch(err => console.error('Error fetching user profile:', err));
+        }
+    }, [isGuest]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const submitData = new FormData();
-            submitData.append('course_name', formData.title);
-            submitData.append('course_code', formData.subject);
-            submitData.append('assignment_type', 'class_assignment'); // Default for now
-            submitData.append('num_pages', '1'); // Default for now
-            submitData.append('deadline', formData.deadline);
-            submitData.append('estimated_cost', formData.budget.toString());
-            if (file) {
-                submitData.append('attachment', file);
-            }
+            const submitData = {
+                course_name: formData.title,
+                course_code: formData.subject,
+                assignment_type: formData.assignment_type,
+                num_pages: '1', // Default for now
+                deadline: formData.deadline,
+                estimated_cost: formData.budget.toString()
+            };
 
-            const response = await fetch('http://localhost:3000/api/assignment-requests', {
+            const response = await fetch(`${API.baseUrl}/api/assignment-requests`, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 credentials: 'include',
-                body: submitData
+                body: JSON.stringify(submitData)
             });
 
             if (!response.ok) {
@@ -129,14 +150,35 @@ const CreateAssignment: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Assignment Type</label>
+                                    <select
+                                        name="assignment_type"
+                                        value={formData.assignment_type}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, assignment_type: e.target.value }))}
+                                        required
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="class_assignment">Class Assignment</option>
+                                        <option value="lab_file">Lab File</option>
+                                        {userStream.startsWith('B.Tech') && (
+                                            <>
+                                                <option value="workshop_file">Workshop Files</option>
+                                                <option value="graphics_sheet">Graphics Sheet</option>
+                                            </>
+                                        )}
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
                                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Deadline</label>
                                     <input
-                                        type="datetime-local"
+                                        type="date"
                                         name="deadline"
                                         value={formData.deadline}
                                         onChange={handleChange}
                                         required
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light] dark:[color-scheme:dark]"
                                     />
                                 </div>
                             </div>
@@ -154,30 +196,6 @@ const CreateAssignment: React.FC = () => {
                                         min="0"
                                         className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Attachment (Optional)</label>
-                                <div className="flex items-center gap-4">
-                                    <label className="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground transition-colors">
-                                        <Paperclip className="h-4 w-4 mr-2" />
-                                        {file ? file.name : "Choose a file"}
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            onChange={(e) => setFile(e.target.files?.[0] || null)}
-                                        />
-                                    </label>
-                                    {file && (
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setFile(null)}
-                                            className="text-sm text-destructive hover:underline whitespace-nowrap"
-                                        >
-                                            Remove
-                                        </button>
-                                    )}
                                 </div>
                             </div>
 
