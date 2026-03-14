@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
-import Logo from './Logo';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
 import { exitGuestMode } from '../utils/auth';
