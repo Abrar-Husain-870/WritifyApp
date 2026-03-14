@@ -5,7 +5,7 @@ import Header from './Header';
 import RatingModal from './RatingModal';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
-import { Loader2, AlertCircle, FileText, CheckCircle2, Star, User, IndianRupee, Clock, Calendar, FileDigit, PlusCircle, Search, Paperclip } from 'lucide-react';
+import { Loader2, AlertCircle, FileText, CheckCircle2, Star, User, IndianRupee, Clock, Calendar, FileDigit, PlusCircle, Search } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { Skeleton } from './ui/Skeleton';
 
@@ -36,7 +36,6 @@ interface Assignment {
   has_rated_writer: boolean;
   has_rated_client: boolean;
   unique_id?: string;
-  attachment_url?: string;
 }
 
 const MyAssignments: React.FC = () => {
@@ -481,19 +480,6 @@ const MyAssignments: React.FC = () => {
                         <span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> Deadline</span>
                         <p className="text-sm font-medium text-foreground">{formatDate(assignment.deadline)}</p>
                       </div>
-                      {assignment.attachment_url && (
-                        <div className="space-y-1">
-                          <span className="text-xs text-muted-foreground flex items-center"><Paperclip className="h-3.5 w-3.5 mr-1" /> Attachment</span>
-                          <a 
-                            href={`http://localhost:5000${assignment.attachment_url}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-primary hover:underline"
-                          >
-                            View File
-                          </a>
-                        </div>
-                      )}
                     </div>
                   </div>
                   

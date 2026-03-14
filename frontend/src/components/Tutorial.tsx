@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from './Header';
-import { BookOpen, UserCircle, Search, FileText, Star, MessageCircle, Settings, Lightbulb, Mail } from 'lucide-react';
+import Logo from './Logo';
+import { UserCircle, Search, FileText, Star, MessageCircle, Settings, Lightbulb, Mail } from 'lucide-react';
 
 const Tutorial: React.FC = () => {
     return (
@@ -11,10 +12,10 @@ const Tutorial: React.FC = () => {
                 <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                     <div className="p-6 sm:p-10">
                         <div className="text-center mb-10">
-                            <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
-                                <BookOpen className="h-8 w-8 text-primary" />
+                            <div className="flex justify-center mb-6">
+                                <Logo iconClassName="w-16 h-16 [&>svg]:w-8 [&>svg]:h-8" textClassName="text-3xl" />
                             </div>
-                            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Writify App Tutorial</h1>
+                            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">App Tutorial</h1>
                             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                                 Writify connects students who need help with assignments to skilled writers who can assist them.
                                 This tutorial will guide you through all the features of the app and how to make the most of it.

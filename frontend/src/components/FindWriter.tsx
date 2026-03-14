@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
-import { Star, Loader2, X, Send, User, ChevronRight, BookOpen, Clock, IndianRupee, FileText, Phone, Search, Paperclip } from 'lucide-react';
+import { Star, Loader2, X, Send, User, ChevronRight, BookOpen, Clock, IndianRupee, FileText, Phone, Search } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { Skeleton } from './ui/Skeleton';
 import { toast } from 'sonner';
@@ -42,13 +42,27 @@ const FindWriter: React.FC = () => {
         estimated_cost: 50,
         whatsapp_number: ''
     });
-    const [file, setFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [streamFilter, setStreamFilter] = useState('all');
     const [submitting, setSubmitting] = useState(false);
-
+    const [userStream, setUserStream] = useState<string>('');
     const { isGuest } = useContext(GuestContext);
+
+    useEffect(() => {
+        if (!isGuest) {
+            fetch(`${API.baseUrl}/api/users/profile`, {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.university_stream) {
+                    setUserStream(data.university_stream);
+                }
+            })
+            .catch(err => console.error('Error fetching user profile:', err));
+        }
+    }, [isGuest]);
 
     useEffect(() => {
         if (isGuest) {
@@ -186,22 +200,23 @@ const FindWriter: React.FC = () => {
         }
         
         try {
-            const submitData = new FormData();
-            submitData.append('course_name', formData.course_name.substring(0, 255));
-            submitData.append('course_code', formData.course_code.substring(0, 50));
-            submitData.append('assignment_type', formData.assignment_type.substring(0, 100));
-            submitData.append('num_pages', parseInt(formData.num_pages.toString()).toString());
-            submitData.append('deadline', formData.deadline);
-            submitData.append('estimated_cost', parseFloat(formData.estimated_cost.toString()).toString());
-            submitData.append('whatsapp_number', formData.whatsapp_number);
-            if (file) {
-                submitData.append('attachment', file);
-            }
+            const submitData = {
+                course_name: formData.course_name.substring(0, 255),
+                course_code: formData.course_code.substring(0, 50),
+                assignment_type: formData.assignment_type.substring(0, 100),
+                num_pages: parseInt(formData.num_pages.toString()).toString(),
+                deadline: formData.deadline,
+                estimated_cost: parseFloat(formData.estimated_cost.toString()).toString(),
+                whatsapp_number: formData.whatsapp_number
+            };
             
             const response = await fetch(API.assignmentRequests.create, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 credentials: 'include',
-                body: submitData
+                body: JSON.stringify(submitData)
             });
 
             if (!response.ok) {
@@ -329,9 +344,16 @@ const FindWriter: React.FC = () => {
                                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 <option value="class_assignment">Class Assignment</option>
-                                                <option value="lab_files">Lab Files</option>
-                                                <option value="graphic_design">Graphic Design</option>
-                                                <option value="workshop_files">Workshop Files</option>
+                                                <option value="lab_file">Lab File</option>
+                                                {userStream.startsWith('B.Tech') && (
+                                                    <>
+                                                        <option value="workshop_file">Workshop Files</option>
+                                                        <option value="graphics_sheet">Graphics Sheet</option>
+                                                    </>
+                                                )}
+                                                <option value="notes">Notes</option>
+                                                <option value="project_report">Project Report</option>
+                                                <option value="other">Other</option>
                                             </select>
                                         </div>
 
@@ -354,12 +376,12 @@ const FindWriter: React.FC = () => {
                                                     <Clock className="h-4 w-4 text-muted-foreground" /> Deadline
                                                 </label>
                                                 <input
-                                                    type="datetime-local"
+                                                    type="date"
                                                     name="deadline"
                                                     value={formData.deadline}
                                                     onChange={handleChange}
                                                     required
-                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light] dark:[color-scheme:dark]"
                                                 />
                                             </div>
                                         </div>
@@ -410,30 +432,6 @@ const FindWriter: React.FC = () => {
                                                 placeholder="+91XXXXXXXXXX"
                                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                             />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Attachment (Optional)</label>
-                                            <div className="flex items-center gap-4">
-                                                <label className="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground transition-colors">
-                                                    <Paperclip className="h-4 w-4 mr-2" />
-                                                    {file ? file.name : "Choose a file"}
-                                                    <input 
-                                                        type="file" 
-                                                        className="hidden" 
-                                                        onChange={(e) => setFile(e.target.files?.[0] || null)}
-                                                    />
-                                                </label>
-                                                {file && (
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => setFile(null)}
-                                                        className="text-sm text-destructive hover:underline whitespace-nowrap"
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                )}
-                                            </div>
                                         </div>
 
                                         <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded-md border border-border/50">

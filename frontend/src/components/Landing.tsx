@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Users, ShieldCheck, ArrowRight, CheckCircle2, BookOpen } from 'lucide-react';
 import DarkModeToggle from './DarkModeToggle';
+import Logo from './Logo';
 
 const Landing: React.FC = () => {
     const navigate = useNavigate();
@@ -12,12 +13,7 @@ const Landing: React.FC = () => {
             <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <BookOpen className="h-5 w-5 text-primary" />
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-foreground">Writify</span>
-                        </div>
+                        <Logo />
                         <div className="flex items-center gap-4">
                             <DarkModeToggle />
                             <button
