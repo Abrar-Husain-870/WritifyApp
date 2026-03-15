@@ -131,13 +131,20 @@ const Login: React.FC<LoginProps> = () => {
         <div className="min-h-screen flex w-full bg-background font-sans">
             {/* Left Side - Branding/Visuals (Hidden on mobile) */}
             <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-zinc-950 text-white flex-col justify-between p-12">
+                
                 {/* Abstract Background Elements */}
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px] mix-blend-screen"></div>
                 <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] mix-blend-screen"></div>
                 
                 {/* Logo */}
-                <div className="relative z-10">
-                    <Logo textClassName="text-white" />
+                <div className="relative z-10 w-full">
+                    <Logo
+                        className="w-full"
+                        showText={false}
+                        variant="dark"
+                        iconClassName="h-44 w-[28rem] xl:h-52 xl:w-[32rem]"
+                        imageClassName="h-full w-full object-contain"
+                    />
                 </div>
 
                 {/* Content */}
@@ -166,8 +173,12 @@ const Login: React.FC<LoginProps> = () => {
                 
                 <div className="w-full max-w-md space-y-10">
                     {/* Mobile Logo */}
-                    <div className="flex items-center justify-center lg:hidden mb-8">
-                        <Logo />
+                    <div className="flex items-center justify-center lg:hidden mb-8 w-full">
+                        <Logo
+                            showText={false}
+                            iconClassName="h-40 w-full max-w-lg"
+                            imageClassName="h-full w-full object-contain"
+                        />
                     </div>
 
                     <div className="text-center lg:text-left">

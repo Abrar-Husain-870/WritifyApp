@@ -22,6 +22,7 @@ interface UserData {
 interface Assignment {
   id: number;
   request_id: number;
+  viewer_role?: 'client' | 'writer';
   writer: UserData | null;
   client: UserData;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
@@ -41,6 +42,8 @@ interface Assignment {
 const MyAssignments: React.FC = () => {
   const navigate = useNavigate();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [clientAssignments, setClientAssignments] = useState<Assignment[]>([]);
+  const [writerAssignments, setWriterAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'client' | 'writer' | 'guest' | null>(null);
@@ -55,10 +58,10 @@ const MyAssignments: React.FC = () => {
     const fetchAssignments = async () => {
       try {
         setLoading(true);
-        
+
         if (isGuest) {
           setUserRole('guest');
-          
+
           const sampleAssignments: Assignment[] = [
             {
               id: 1001,
@@ -149,19 +152,21 @@ const MyAssignments: React.FC = () => {
               has_rated_client: false
             }
           ];
-          
+
           setAssignments(sampleAssignments);
+          setClientAssignments(sampleAssignments);
+          setWriterAssignments([]);
           setLoading(false);
           return;
         }
-        
+
         const response = await fetch(API.assignments.my, {
           credentials: 'include',
           headers: {
             'Accept': 'application/json'
           }
         });
-        
+
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
             navigate('/login');
@@ -169,9 +174,15 @@ const MyAssignments: React.FC = () => {
           }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        setAssignments(data.assignments || []);
+        const legacyAssignments: Assignment[] = data.assignments || [];
+        const fetchedClientAssignments: Assignment[] = data.clientAssignments || [];
+        const fetchedWriterAssignments: Assignment[] = data.writerAssignments || [];
+
+        setAssignments(legacyAssignments);
+        setClientAssignments(fetchedClientAssignments);
+        setWriterAssignments(fetchedWriterAssignments);
         setUserRole(data.role);
         setLoading(false);
       } catch (err) {
@@ -194,10 +205,28 @@ const MyAssignments: React.FC = () => {
         throw new Error('Failed to complete assignment');
       }
 
-      setAssignments(prevAssignments => 
-        prevAssignments.map(assignment => 
-          assignment.id === assignmentId 
-            ? { ...assignment, status: 'completed', completed_at: new Date().toISOString() } 
+      const completedAt = new Date().toISOString();
+
+      setAssignments(prevAssignments =>
+        prevAssignments.map(assignment =>
+          assignment.id === assignmentId
+            ? { ...assignment, status: 'completed', completed_at: completedAt }
+            : assignment
+        )
+      );
+
+      setClientAssignments(prevAssignments =>
+        prevAssignments.map(assignment =>
+          assignment.id === assignmentId
+            ? { ...assignment, status: 'completed', completed_at: completedAt }
+            : assignment
+        )
+      );
+
+      setWriterAssignments(prevAssignments =>
+        prevAssignments.map(assignment =>
+          assignment.id === assignmentId
+            ? { ...assignment, status: 'completed', completed_at: completedAt }
             : assignment
         )
       );
@@ -213,11 +242,13 @@ const MyAssignments: React.FC = () => {
 
   const handleRatingSubmitted = () => {
     if (!selectedAssignment) return;
-    
-    setAssignments(prevAssignments => 
+
+    const viewerRole = selectedAssignment.viewer_role || userRole;
+
+    setAssignments(prevAssignments =>
       prevAssignments.map(assignment => {
         if (assignment.id === selectedAssignment.id) {
-          if (userRole === 'client') {
+          if (viewerRole === 'client') {
             return { ...assignment, has_rated_writer: true };
           } else {
             return { ...assignment, has_rated_client: true };
@@ -226,6 +257,67 @@ const MyAssignments: React.FC = () => {
         return assignment;
       })
     );
+
+    setClientAssignments(prevAssignments =>
+      prevAssignments.map(assignment =>
+        assignment.id === selectedAssignment.id
+          ? { ...assignment, has_rated_writer: true }
+          : assignment
+      )
+    );
+
+    setWriterAssignments(prevAssignments =>
+      prevAssignments.map(assignment =>
+        assignment.id === selectedAssignment.id
+          ? { ...assignment, has_rated_client: true }
+          : assignment
+      )
+    );
+  };
+
+  const openWhatsAppChat = (assignment: Assignment, viewerRole: 'client' | 'writer') => {
+    const counterparty = viewerRole === 'client' ? assignment.writer : assignment.client;
+    if (!counterparty) {
+      alert('No user found to contact for this assignment yet.');
+      return;
+    }
+
+    const rawNumber = counterparty.whatsapp_number || '';
+    let phoneNumber = rawNumber.replace(/\D/g, '');
+
+    if (!phoneNumber) {
+      if (rawNumber) {
+        const extractedDigits = rawNumber.replace(/\D/g, '');
+        if (extractedDigits.length >= 10) {
+          phoneNumber = extractedDigits;
+        } else if (extractedDigits.length >= 4) {
+          const confirmContact = window.confirm(
+            `Only partial phone number is available (ending in: ${extractedDigits}). \n\n` +
+            `Please contact them using the details you already have or ask them to update their WhatsApp number.\n\n` +
+            `Would you like to refresh this page now?`
+          );
+          if (confirmContact) window.location.reload();
+          return;
+        }
+      }
+
+      alert('The user has not added their WhatsApp number.');
+      return;
+    }
+
+    if (phoneNumber.length === 10) {
+      phoneNumber = '91' + phoneNumber;
+    } else if (phoneNumber.length < 10) {
+      alert('The user has an invalid phone number.');
+      return;
+    }
+
+    const baseMessage = viewerRole === 'client'
+      ? `Hi, I'm contacting you regarding my assignment for ${assignment.course_name} (${assignment.course_code})${assignment.unique_id ? ` [ID: ${assignment.unique_id}]` : ''}. Let's discuss the details.`
+      : `Hi, I've accepted your assignment request for ${assignment.course_name} (${assignment.course_code})${assignment.unique_id ? ` [ID: ${assignment.unique_id}]` : ''}. Let's discuss the details.`;
+
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(baseMessage)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const formatDate = (dateString: string | null | undefined) => {
@@ -236,9 +328,9 @@ const MyAssignments: React.FC = () => {
         day: 'numeric'
       });
     }
-    
+
     const date = new Date(dateString);
-    
+
     if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
       if (dateString.includes('T')) {
         const isoDate = new Date(dateString.split('T')[0]);
@@ -250,11 +342,11 @@ const MyAssignments: React.FC = () => {
           });
         }
       }
-      
+
       if (!isNaN(Number(dateString))) {
         const milliseconds = parseInt(dateString);
         const timestampDate = new Date(milliseconds);
-        
+
         if (!isNaN(timestampDate.getTime())) {
           return timestampDate.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -263,14 +355,14 @@ const MyAssignments: React.FC = () => {
           });
         }
       }
-      
+
       return new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
     }
-    
+
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -279,22 +371,24 @@ const MyAssignments: React.FC = () => {
   };
 
   const getRatingButtonText = (assignment: Assignment) => {
+    const viewerRole = assignment.viewer_role || userRole;
     if (!assignment.writer) {
       return 'Pending Writer';
     }
-    if (userRole === 'client' && assignment.has_rated_writer) {
+    if (viewerRole === 'client' && assignment.has_rated_writer) {
       return 'Writer Rated';
-    } else if (userRole === 'writer' && assignment.has_rated_client) {
+    } else if (viewerRole === 'writer' && assignment.has_rated_client) {
       return 'Client Rated';
     } else {
-      return userRole === 'client' ? 'Rate Writer' : 'Rate Client';
+      return viewerRole === 'client' ? 'Rate Writer' : 'Rate Client';
     }
   };
 
   const isRatingDisabled = (assignment: Assignment) => {
-    return !assignment.writer || 
-           (userRole === 'client' && assignment.has_rated_writer) || 
-           (userRole === 'writer' && assignment.has_rated_client);
+    const viewerRole = assignment.viewer_role || userRole;
+    return !assignment.writer ||
+           (viewerRole === 'client' && assignment.has_rated_writer) ||
+           (viewerRole === 'writer' && assignment.has_rated_client);
   };
 
   const formatRating = (rating: any): string => {
@@ -350,17 +444,150 @@ const MyAssignments: React.FC = () => {
     return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
+  const renderAssignmentCard = (assignment: Assignment) => {
+    const viewerRole = assignment.viewer_role || userRole;
+    const counterparty = viewerRole === 'client' ? assignment.writer : assignment.client;
+
+    return (
+      <div key={assignment.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row">
+        {/* Left side: Assignment Details */}
+        <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+                  {formatAssignmentType(assignment.assignment_type)}
+                </span>
+                {getStatusBadge(assignment.status)}
+              </div>
+              <h3 className="text-xl font-bold text-foreground">
+                {assignment.course_name}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{assignment.course_code}</span>
+                {assignment.unique_id && (
+                  <span className="text-xs font-medium text-muted-foreground flex items-center">
+                    <FileDigit className="h-3 w-3 mr-1" /> ID: {assignment.unique_id}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+            <div className="space-y-1">
+              <span className="text-xs text-muted-foreground flex items-center"><FileText className="h-3.5 w-3.5 mr-1" /> Pages</span>
+              <p className="text-sm font-medium text-foreground">{assignment.num_pages}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs text-muted-foreground flex items-center"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Cost</span>
+              <p className="text-sm font-semibold text-primary">₹{assignment.estimated_cost}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs text-muted-foreground flex items-center"><Calendar className="h-3.5 w-3.5 mr-1" /> Created</span>
+              <p className="text-sm font-medium text-foreground">{formatDate(assignment.created_at)}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> Deadline</span>
+              <p className="text-sm font-medium text-foreground">{formatDate(assignment.deadline)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side: User & Actions */}
+        <div className="p-6 md:w-80 flex flex-col bg-muted/10">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+            {assignment.writer ? (viewerRole === 'client' ? 'Assigned Writer' : 'Client') : 'Status'}
+          </h4>
+
+          {assignment.writer || viewerRole === 'writer' ? (
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border overflow-hidden">
+                {counterparty?.profile_picture ? (
+                  <img
+                    src={counterparty.profile_picture}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground line-clamp-1">
+                  {counterparty?.name || 'Unknown'}
+                </p>
+                <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                  <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-1" />
+                  {viewerRole === 'client'
+                    ? formatRating(assignment.writer?.rating)
+                    : formatRating(assignment.client.rating)}
+                  <span className="ml-1">
+                    ({viewerRole === 'client'
+                      ? assignment.writer?.total_ratings || 0
+                      : assignment.client.total_ratings || 0})
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Waiting for a writer to accept
+            </div>
+          )}
+
+          <div className="mt-auto space-y-2">
+            {assignment.writer && (
+              <button
+                onClick={() => openWhatsAppChat(assignment, viewerRole as 'client' | 'writer')}
+                className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9"
+              >
+                {viewerRole === 'client' ? 'Contact Writer' : 'Contact Client'}
+              </button>
+            )}
+
+            {viewerRole === 'writer' && assignment.status === 'in_progress' && (
+              <button
+                onClick={() => handleCompleteAssignment(assignment.id)}
+                className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Completed
+              </button>
+            )}
+
+            <button
+              onClick={() => openRatingModal(assignment)}
+              disabled={isRatingDisabled(assignment)}
+              className={cn(
+                "w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9",
+                isRatingDisabled(assignment)
+                  ? "bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+              )}
+            >
+              <Star className={cn("w-4 h-4 mr-2", !isRatingDisabled(assignment) && "fill-current")} />
+              {getRatingButtonText(assignment)}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header title="My Assignments" />
 
       <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
+
         {loading ? (
           <div className="space-y-6">
             <Skeleton className="h-24 w-full rounded-xl" />
             <div className="grid grid-cols-1 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-card rounded-xl border border-border overflow-hidden flex flex-col md:flex-row">
+                <div key={i} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row">
+                  {/* Left side: Assignment Details */}
                   <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border space-y-4">
                     <div className="flex gap-2 mb-2">
                       <Skeleton className="h-5 w-24 rounded" />
@@ -375,6 +602,7 @@ const MyAssignments: React.FC = () => {
                       <Skeleton className="h-10 w-full" />
                     </div>
                   </div>
+                  {/* Right side: User & Actions */}
                   <div className="p-6 md:w-80 flex flex-col bg-muted/10">
                     <Skeleton className="h-4 w-24 mb-4" />
                     <div className="flex items-center gap-3 mb-6">
@@ -404,7 +632,7 @@ const MyAssignments: React.FC = () => {
                 Try Again
             </button>
           </div>
-        ) : assignments.length === 0 ? (
+        ) : (clientAssignments.length === 0 && writerAssignments.length === 0 && assignments.length === 0) ? (
           <div className="flex flex-col items-center justify-center py-24 text-center bg-card/50 rounded-3xl border border-border border-dashed relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
             <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative z-10">
@@ -436,123 +664,30 @@ const MyAssignments: React.FC = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 gap-6">
-              {assignments.map((assignment) => (
-                <div key={assignment.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row">
-                  {/* Left side: Assignment Details */}
-                  <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border">
-                            {formatAssignmentType(assignment.assignment_type)}
-                          </span>
-                          {getStatusBadge(assignment.status)}
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground">
-                          {assignment.course_name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{assignment.course_code}</span>
-                          {assignment.unique_id && (
-                            <span className="text-xs font-medium text-muted-foreground flex items-center">
-                              <FileDigit className="h-3 w-3 mr-1" /> ID: {assignment.unique_id}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><FileText className="h-3.5 w-3.5 mr-1" /> Pages</span>
-                        <p className="text-sm font-medium text-foreground">{assignment.num_pages}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Cost</span>
-                        <p className="text-sm font-semibold text-primary">₹{assignment.estimated_cost}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><Calendar className="h-3.5 w-3.5 mr-1" /> Created</span>
-                        <p className="text-sm font-medium text-foreground">{formatDate(assignment.created_at)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> Deadline</span>
-                        <p className="text-sm font-medium text-foreground">{formatDate(assignment.deadline)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Right side: User & Actions */}
-                  <div className="p-6 md:w-80 flex flex-col bg-muted/10">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                      {assignment.writer ? (userRole === 'client' ? 'Assigned Writer' : 'Client') : 'Status'}
-                    </h4>
-                    
-                    {assignment.writer || userRole === 'writer' ? (
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border overflow-hidden">
-                          {(userRole === 'client' ? assignment.writer?.profile_picture : assignment.client.profile_picture) ? (
-                            <img 
-                              src={userRole === 'client' ? assignment.writer?.profile_picture! : assignment.client.profile_picture!} 
-                              alt="Profile" 
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground line-clamp-1">
-                            {userRole === 'client' ? assignment.writer?.name : assignment.client.name}
-                          </p>
-                          <div className="flex items-center text-xs text-muted-foreground mt-0.5">
-                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-1" />
-                            {userRole === 'client' ? 
-                              formatRating(assignment.writer?.rating) : 
-                              formatRating(assignment.client.rating)} 
-                            <span className="ml-1">
-                              ({userRole === 'client' ? 
-                                assignment.writer?.total_ratings || 0 : 
-                                assignment.client.total_ratings || 0})
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Waiting for a writer to accept
-                      </div>
-                    )}
-                    
-                    <div className="mt-auto space-y-2">
-                      {userRole === 'writer' && assignment.status === 'in_progress' && (
-                        <button
-                          onClick={() => handleCompleteAssignment(assignment.id)}
-                          className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Completed
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => openRatingModal(assignment)}
-                        disabled={isRatingDisabled(assignment)}
-                        className={cn(
-                          "w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9",
-                          isRatingDisabled(assignment)
-                            ? "bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed"
-                            : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                        )}
-                      >
-                        <Star className={cn("w-4 h-4 mr-2", !isRatingDisabled(assignment) && "fill-current")} />
-                        {getRatingButtonText(assignment)}
-                      </button>
-                    </div>
+            <div className="space-y-8">
+              {clientAssignments.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-foreground">Posted by you</h2>
+                  <div className="grid grid-cols-1 gap-6">
+                    {clientAssignments.map(renderAssignmentCard)}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {writerAssignments.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-foreground">Accepted by you</h2>
+                  <div className="grid grid-cols-1 gap-6">
+                    {writerAssignments.map(renderAssignmentCard)}
+                  </div>
+                </div>
+              )}
+
+              {clientAssignments.length === 0 && writerAssignments.length === 0 && assignments.length > 0 && (
+                <div className="grid grid-cols-1 gap-6">
+                  {assignments.map(renderAssignmentCard)}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -598,11 +733,11 @@ const MyAssignments: React.FC = () => {
         <RatingModal
           isOpen={showRatingModal}
           onClose={() => setShowRatingModal(false)}
-          ratedUserId={selectedAssignment && (userRole === 'client' ? selectedAssignment.writer?.id || 0 : selectedAssignment.client.id)}
-          ratedUserName={selectedAssignment && (userRole === 'client' ? selectedAssignment.writer?.name || 'Unknown' : selectedAssignment.client.name)}
+          ratedUserId={selectedAssignment && ((selectedAssignment.viewer_role || userRole) === 'client' ? selectedAssignment.writer?.id || 0 : selectedAssignment.client.id)}
+          ratedUserName={selectedAssignment && ((selectedAssignment.viewer_role || userRole) === 'client' ? selectedAssignment.writer?.name || 'Unknown' : selectedAssignment.client.name)}
           assignmentRequestId={selectedAssignment?.request_id || 0}
           onRatingSubmitted={handleRatingSubmitted}
-          userType={userRole === 'client' ? 'writer' : 'client'}
+          userType={(selectedAssignment.viewer_role || userRole) === 'client' ? 'writer' : 'client'}
         />
       )}
     </div>

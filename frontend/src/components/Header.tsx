@@ -42,7 +42,11 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
                             </button>
                         )}
                         {!showBackButton ? (
-                            <Logo />
+                            <Logo
+                                showText={false}
+                                iconClassName="h-14 w-24"
+                                imageClassName="h-full w-full object-contain"
+                            />
                         ) : (
                             <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
                         )}
