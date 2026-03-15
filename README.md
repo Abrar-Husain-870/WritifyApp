@@ -1,134 +1,118 @@
-# Writify
+# Writify 🎓
 
-Writify is an assignment marketplace platform that connects students with writers for academic assistance.
+Writify is a modern, secure, peer-to-peer assignment marketplace platform designed exclusively for university students. It connects students who need academic assistance with talented peers who can provide help, fostering a collaborative learning environment.
 
-## Tech Stack
+## ✨ Features
 
-- **Frontend**: React with TypeScript, Tailwind CSS
-- **Backend**: Node.js with Express
-- **Database**: PostgreSQL
-- **Authentication**: Google OAuth via Passport.js
+- **Exclusive Access**: Google OAuth authentication strictly limited to university email addresses (`.student.iul.ac.in`).
+- **Student & Writer Roles**: Seamlessly switch between requesting help and offering your services.
+- **Assignment Broadcasting**: Post assignments to a public board for available writers to accept.
+- **Direct Writer Requests**: Browse writer profiles, view their ratings/portfolios, and request them directly.
+- **Advanced Filtering**: Filter assignments and writers by university stream, assignment type (e.g., Lab Files, Workshop Files, Graphics Sheets), and status.
+- **WhatsApp Integration**: Direct one-click WhatsApp redirection for seamless communication between clients and writers.
+- **Rating & Review System**: Built-in rating system to ensure quality and build trust within the community.
+- **Modern UI/UX**: Fully responsive, accessible design with smooth animations and a built-in Dark/Light mode toggle.
 
-## Local Development Setup
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Routing**: React Router DOM v6
+- **Styling**: Tailwind CSS v3
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Notifications**: Sonner (Toast notifications)
+
+### Backend
+- **Environment**: Node.js
+- **Framework**: Express.js
+- **Database**: PostgreSQL (interfaced via `pg`)
+- **Authentication**: Passport.js (Google OAuth 2.0)
+- **Security**: Helmet, Express Rate Limit, CORS
+
+## 🚀 Local Development Setup
 
 ### Prerequisites
+- Node.js (v18 or higher recommended)
+- PostgreSQL installed and running locally
+- Git
 
-- Node.js (v14 or higher)
-- PostgreSQL
-- npm or yarn
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd writify
+```
 
-### Backend Setup
+### 2. Backend Setup
+```bash
+cd backend
+npm install
+```
 
-1. Navigate to the backend directory:
-   ```
-   cd backend
-   ```
+Create a `.env` file in the `backend` directory based on `.env.example`:
+```env
+PORT=5000
+DATABASE_URL=postgresql://username:password@localhost:5432/writify_db
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+SESSION_SECRET=your_secure_random_string
+FRONTEND_URL=http://localhost:3000
+GOOGLE_CALLBACK_URL=http://localhost:5000/auth/google/callback
+ENCRYPTION_KEY=your_32_character_encryption_key
+```
 
-2. Install dependencies:
-   ```
-   npm install
-   ```
+Initialize the database schema:
+```bash
+npm run setup-db
+```
 
-3. Create a `.env` file based on `.env.example`:
-   ```
-   cp .env.example .env
-   ```
+Start the backend development server:
+```bash
+npm run dev
+```
 
-4. Update the `.env` file with your local PostgreSQL credentials and Google OAuth credentials.
+### 3. Frontend Setup
+Open a new terminal window:
+```bash
+cd frontend
+npm install
+```
 
-5. Initialize the database:
-   ```
-   npm run setup-db
-   ```
+Start the frontend development server:
+```bash
+npm start
+```
+The application will be available at `http://localhost:3000`.
 
-6. Start the development server:
-   ```
-   npm run dev
-   ```
+## 🌍 Deployment Guide
 
-### Frontend Setup
+### Database (Railway)
+1. Create a project on [Railway](https://railway.app).
+2. Provision a new PostgreSQL database.
+3. Copy the "PostgreSQL Connection URL" and update your backend environment variables.
+4. Run `npm run setup-db` locally using the production database URL to initialize the schema.
 
-1. Navigate to the frontend directory:
-   ```
-   cd frontend
-   ```
+### Backend (Render)
+1. Create a Web Service on [Render](https://render.com).
+2. Connect your GitHub repository.
+3. Set the Root Directory to `backend`.
+4. Build Command: `npm install`
+5. Start Command: `npm start`
+6. Add all necessary environment variables (including `NODE_ENV=production`).
 
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Start the development server:
-   ```
-   npm start
-   ```
-
-## Deployment
-
-### Database Deployment on Railway
-
-1. Create a Railway account at [railway.app](https://railway.app)
-
-2. Create a new PostgreSQL database project:
-   - Click "New Project" and select "PostgreSQL"
-   - Railway will provision a PostgreSQL database for you
-
-3. Get your database connection string:
-   - Go to your PostgreSQL service dashboard
-   - Click on "Connect" tab
-   - Copy the "PostgreSQL Connection URL"
-
-4. Set up the database schema:
-   - Set the `DATABASE_URL` environment variable in your local `.env` file to the Railway connection URL
-   - Run `npm run setup-db` from the backend directory to initialize the database schema
-
-### Backend Deployment on Render
-
-1. Create a Render account at [render.com](https://render.com)
-
-2. Create a new Web Service:
-   - Connect your GitHub repository
-   - Select the repository and branch
-   - Configure the service:
-     - Name: `writify-backend`
-     - Root Directory: `backend`
-     - Build Command: `npm install`
-     - Start Command: `npm start`
-
-3. Add environment variables:
-   - `DATABASE_URL`: Your Railway PostgreSQL connection URL
-   - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
-   - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
-   - `SESSION_SECRET`: A secure random string
-   - `NODE_ENV`: Set to `production`
-
-### Frontend Deployment on Vercel/Netlify
-
-1. Create an account on [Vercel](https://vercel.com) or [Netlify](https://netlify.com)
-
-2. Connect your GitHub repository
-
-3. Configure the deployment:
-   - Root Directory: `frontend`
-   - Build Command: `npm run build`
-   - Output Directory: `build`
-
-4. Add environment variables:
+### Frontend (Vercel)
+1. Import your repository into [Vercel](https://vercel.com).
+2. Set the Framework Preset to Create React App.
+3. Set the Root Directory to `frontend`.
+4. Add the environment variable:
    - `REACT_APP_API_URL`: Your Render backend URL (e.g., `https://writify-backend.onrender.com`)
+5. Deploy!
 
-## Image Handling
+## 📸 Image Handling
+Writify uses external image hosting to keep the database lightweight. Users should:
+1. Upload portfolio images to services like Imgur or Google Drive.
+2. Get the direct image link.
+3. Paste the URL into their profile settings.
 
-Writify uses external image hosting. Users should:
-1. Upload images to services like Google Drive, Imgur, etc.
-2. Get a shareable link
-3. Paste the URL into the appropriate fields in the application
-
-## Features
-
-- Google OAuth authentication with university email validation
-- Writer discovery with ratings and profiles
-- Assignment request submission and management
-- Request expiration system
-- Writer portfolio management
-- Rating system for quality assurance
-- WhatsApp integration for direct communication
+## 📄 License
+This project is licensed under the MIT License.

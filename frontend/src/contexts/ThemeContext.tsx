@@ -11,9 +11,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Check if user has previously set a preference
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const savedTheme = localStorage.getItem('darkMode');
-    // Also check system preference if no saved preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return savedTheme ? savedTheme === 'true' : prefersDark;
+    // Default to light mode if no saved preference
+    return savedTheme ? savedTheme === 'true' : false;
   });
 
   // Update the HTML class when dark mode changes
