@@ -1104,7 +1104,7 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     ar.num_pages,
                     ar.deadline,
                     ar.estimated_cost,
-                    a.created_at,
+                    COALESCE(a.created_at, ar.created_at) as created_at,
                     COALESCE(a.status, 'pending') as status,
                     a.completed_at,
                     writer.id as writer_id,
@@ -1120,7 +1120,8 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     client.profile_picture as client_profile_picture,
                     COALESCE(client.rating::numeric, 0.0) as client_rating,
                     COALESCE(client.total_ratings, 0) as client_total_ratings,
-                    client.whatsapp_number as client_whatsapp_number
+                    client.whatsapp_number as client_whatsapp_number,
+                    ar.unique_id
                 FROM assignment_requests ar
                 LEFT JOIN assignments a ON ar.id = a.request_id
                 LEFT JOIN users writer ON a.writer_id = writer.id
@@ -1175,9 +1176,9 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                 num_pages: a.num_pages,
                 deadline: a.deadline,
                 estimated_cost: a.estimated_cost,
-                // Check if client has rated the writer
+                unique_id: a.unique_id,
                 has_rated_writer: a.writer_id ? ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.writer_id : false,
-                has_rated_client: false // Clients don't rate themselves
+                has_rated_client: false
             }));
 
             res.json({ 
@@ -1195,7 +1196,7 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     ar.num_pages,
                     ar.deadline,
                     ar.estimated_cost,
-                    a.created_at,
+                    COALESCE(a.created_at, ar.created_at) as created_at,
                     a.status,
                     a.completed_at,
                     writer.id as writer_id,
@@ -1211,7 +1212,8 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                     client.profile_picture as client_profile_picture,
                     COALESCE(client.rating::numeric, 0.0) as client_rating,
                     COALESCE(client.total_ratings, 0) as client_total_ratings,
-                    client.whatsapp_number as client_whatsapp_number
+                    client.whatsapp_number as client_whatsapp_number,
+                    ar.unique_id
                 FROM assignments a
                 JOIN assignment_requests ar ON a.request_id = ar.id
                 JOIN users writer ON a.writer_id = writer.id
@@ -1266,8 +1268,8 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
                 num_pages: a.num_pages,
                 deadline: a.deadline,
                 estimated_cost: a.estimated_cost,
-                has_rated_writer: false, // Writers don't rate themselves
-                // Check if writer has rated the client
+                unique_id: a.unique_id,
+                has_rated_writer: false,
                 has_rated_client: ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.client_id
             }));
 

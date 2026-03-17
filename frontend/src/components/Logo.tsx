@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../utils/cn';
-import { PenTool } from 'lucide-react';
+import writifyLogo from '../assets/new_logo11.png';
 
 interface LogoProps {
   className?: string;
@@ -13,16 +13,24 @@ const Logo: React.FC<LogoProps> = ({
   className, 
   iconClassName, 
   textClassName,
-  showText = true 
+  showText = false 
 }) => {
   return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      <div className={cn("relative flex items-center justify-center h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-sm overflow-hidden", iconClassName)}>
-        <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity"></div>
-        <PenTool className="w-5 h-5 text-primary-foreground transform -rotate-12" />
-      </div>
+    <div className={cn("flex items-center select-none", className)}>
+      <img 
+        src={writifyLogo} 
+        alt="Writify Logo" 
+        draggable={false}
+        className={cn(
+          "h-14 sm:h-16 w-auto object-contain",
+          iconClassName
+        )} 
+      />
       {showText && (
-        <span className={cn("font-bold text-xl tracking-tight text-foreground", textClassName)}>
+        <span className={cn(
+          "font-semibold text-xl tracking-tight ml-2.5 text-foreground",
+          textClassName
+        )}>
           Writify
         </span>
       )}

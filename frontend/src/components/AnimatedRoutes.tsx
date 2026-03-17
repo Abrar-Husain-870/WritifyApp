@@ -6,7 +6,6 @@ import PageTransition from './PageTransition';
 import Landing from './Landing';
 import Login from './Login';
 import Dashboard from './Dashboard';
-import CreateAssignment from './CreateAssignment';
 import FindWriter from './FindWriter';
 import WriterProfile from './WriterProfile';
 import BrowseRequests from './BrowseRequests';
@@ -47,11 +46,6 @@ const AnimatedRoutes: React.FC<AnimatedRoutesProps> = ({ isAuthenticated, isGues
                 <Route path="/dashboard" element={
                     <PageTransition>
                         {isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
-                    </PageTransition>
-                } />
-                <Route path="/create-assignment" element={
-                    <PageTransition>
-                        {isAuthenticated && !isGuest ? <CreateAssignment /> : (isGuest ? <Navigate to="/dashboard" /> : <Navigate to="/login" />)}
                     </PageTransition>
                 } />
                 <Route path="/find-writer" element={

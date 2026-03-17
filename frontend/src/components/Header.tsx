@@ -1,9 +1,9 @@
 import React, { useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DarkModeToggle from './DarkModeToggle';
 import { GuestContext } from '../App';
 import { logout, exitGuestMode as forceExitGuestMode } from '../utils/auth';
-import { ArrowLeft, ClipboardList, User, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, User } from 'lucide-react';
 import { cn } from '../utils/cn';
 import Logo from './Logo';
 
@@ -12,82 +12,91 @@ interface HeaderProps {
     showBackButton?: boolean;
 }
 
+const navItems = [
+    { name: 'Dashboard', path: '/dashboard' },
+    { name: 'Assignments', path: '/my-assignments' },
+    { name: 'Find Writer', path: '/find-writer' },
+    { name: 'Browse', path: '/browse-requests' },
+];
+
 const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { isGuest } = useContext(GuestContext);
 
     const handleSignOut = () => {
-        if (isGuest) {
-            forceExitGuestMode();
-            return;
-        }
+        if (isGuest) { forceExitGuestMode(); return; }
         logout();
     };
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex h-16 items-center justify-between">
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex h-14 items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        {showBackButton && (
-                            <button
-                                onClick={() => navigate('/dashboard')}
-                                className={cn(
-                                    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                                    "hover:bg-accent hover:text-accent-foreground h-9 w-9"
-                                )}
-                            >
-                                <ArrowLeft className="h-5 w-5" />
-                                <span className="sr-only">Back</span>
-                            </button>
-                        )}
                         {!showBackButton ? (
-                            <Logo />
+                            <Logo iconClassName="h-20 sm:h-22" />
                         ) : (
-                            <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+                            <div className="flex items-center gap-2.5">
+                                <button
+                                    onClick={() => navigate('/dashboard')}
+                                    className="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors h-8 w-8"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                </button>
+                                <span className="text-sm font-medium text-foreground hidden sm:block">{title}</span>
+                            </div>
                         )}
+
+                        <nav className="hidden md:flex items-center gap-0.5 ml-6">
+                            {navItems.map((item) => {
+                                const isActive = location.pathname === item.path;
+                                return (
+                                    <button
+                                        key={item.path}
+                                        onClick={() => navigate(item.path)}
+                                        className={cn(
+                                            "px-3 py-1.5 text-sm rounded-md transition-colors relative",
+                                            isActive
+                                                ? "text-foreground font-medium"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        {item.name}
+                                        {isActive && (
+                                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-foreground rounded-full" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </nav>
                     </div>
                     
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-1">
                         <DarkModeToggle />
-                        
-                        <div className="h-4 w-px bg-border hidden sm:block mx-1" />
-
-                        <button
-                            onClick={() => navigate('/my-assignments')}
-                            className={cn(
-                                "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                                "hover:bg-accent hover:text-accent-foreground h-9 w-9 sm:h-9 sm:px-4 sm:w-auto"
-                            )}
-                            title="My Assignments"
-                        >
-                            <ClipboardList className="h-5 w-5 sm:mr-2" />
-                            <span className="hidden sm:inline-block">Assignments</span>
-                        </button>
 
                         {!isGuest && (
                             <button
                                 onClick={() => navigate('/profile')}
                                 className={cn(
-                                    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                                    "hover:bg-accent hover:text-accent-foreground h-9 w-9 sm:h-9 sm:px-4 sm:w-auto"
+                                    "inline-flex items-center justify-center rounded-md text-sm transition-colors h-8 w-8 sm:w-auto sm:px-3 sm:gap-1.5",
+                                    location.pathname === '/profile'
+                                        ? "text-foreground font-medium"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                                 )}
                                 title="Profile"
                             >
-                                <User className="h-5 w-5 sm:mr-2" />
-                                <span className="hidden sm:inline-block">Profile</span>
+                                <User className="h-4 w-4" />
+                                <span className="hidden sm:inline text-sm">Profile</span>
                             </button>
                         )}
 
                         <button
                             onClick={handleSignOut}
-                            className={cn(
-                                "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                                "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-4 ml-2"
-                            )}
+                            className="inline-flex items-center justify-center rounded-md text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors h-8 w-8 sm:w-auto sm:px-3 sm:gap-1.5"
                         >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            <span className="hidden sm:inline-block">{isGuest ? 'Exit Guest' : 'Sign Out'}</span>
+                            <LogOut className="h-4 w-4" />
+                            <span className="hidden sm:inline">{isGuest ? 'Exit' : 'Sign Out'}</span>
                         </button>
                     </div>
                 </div>

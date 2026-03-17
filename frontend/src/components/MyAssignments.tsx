@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import Header from './Header';
 import RatingModal from './RatingModal';
 import { API } from '../utils/api';
 import { GuestContext } from '../App';
-import { Loader2, AlertCircle, FileText, CheckCircle2, Star, User, IndianRupee, Clock, Calendar, FileDigit, PlusCircle, Search } from 'lucide-react';
+import { Loader2, AlertCircle, FileText, CheckCircle2, Star, Clock, PlusCircle, Search, CircleDashed, CircleDot, CheckCircle, XCircle, MessageCircle, Calendar } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { Skeleton } from './ui/Skeleton';
 
@@ -49,127 +48,48 @@ const MyAssignments: React.FC = () => {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [updatingWhatsApp, setUpdatingWhatsApp] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
   const { isGuest } = useContext(GuestContext);
 
   useEffect(() => {
     const fetchAssignments = async () => {
       try {
         setLoading(true);
-        
         if (isGuest) {
           setUserRole('guest');
-          
-          const sampleAssignments: Assignment[] = [
+          setAssignments([
             {
-              id: 1001,
-              request_id: 2001,
-              writer: {
-                id: 3001,
-                name: 'Anonymous Writer',
-                email: 'writer@example.com',
-                profile_picture: null,
-                rating: 4.5,
-                total_ratings: 12,
-                whatsapp_number: '**********'
-              },
-              client: {
-                id: 4001,
-                name: 'Guest',
-                email: 'guest@example.com',
-                profile_picture: null,
-                rating: 4.2,
-                total_ratings: 8
-              },
-              status: 'in_progress',
-              created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-              completed_at: null,
-              course_name: 'Introduction to Computer Science',
-              course_code: 'CS101',
-              assignment_type: 'class_assignment',
-              num_pages: 5,
-              deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-              estimated_cost: 50,
-              has_rated_writer: false,
-              has_rated_client: false
+              id: 1001, request_id: 2001,
+              writer: { id: 3001, name: 'Anonymous Writer', email: 'writer@example.com', profile_picture: null, rating: 4.5, total_ratings: 12, whatsapp_number: '**********' },
+              client: { id: 4001, name: 'Guest', email: 'guest@example.com', profile_picture: null, rating: 4.2, total_ratings: 8 },
+              status: 'in_progress', created_at: new Date(Date.now() - 7 * 86400000).toISOString(), completed_at: null,
+              course_name: 'Introduction to Computer Science', course_code: 'CS101', assignment_type: 'class_assignment',
+              num_pages: 5, deadline: new Date(Date.now() + 3 * 86400000).toISOString(), estimated_cost: 50, has_rated_writer: false, has_rated_client: false
             },
             {
-              id: 1002,
-              request_id: 2002,
-              writer: {
-                id: 3002,
-                name: 'Anonymous Writer',
-                email: 'writer2@example.com',
-                profile_picture: null,
-                rating: 4.8,
-                total_ratings: 24,
-                whatsapp_number: '**********'
-              },
-              client: {
-                id: 4002,
-                name: 'Guest',
-                email: 'guest@example.com',
-                profile_picture: null,
-                rating: 4.0,
-                total_ratings: 5
-              },
-              status: 'completed',
-              created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-              completed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              course_name: 'Advanced Database Systems',
-              course_code: 'CS305',
-              assignment_type: 'lab_files',
-              num_pages: 10,
-              deadline: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-              estimated_cost: 120,
-              has_rated_writer: true,
-              has_rated_client: true
+              id: 1002, request_id: 2002,
+              writer: { id: 3002, name: 'Anonymous Writer', email: 'writer2@example.com', profile_picture: null, rating: 4.8, total_ratings: 24, whatsapp_number: '**********' },
+              client: { id: 4002, name: 'Guest', email: 'guest@example.com', profile_picture: null, rating: 4.0, total_ratings: 5 },
+              status: 'completed', created_at: new Date(Date.now() - 14 * 86400000).toISOString(), completed_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+              course_name: 'Advanced Database Systems', course_code: 'CS305', assignment_type: 'lab_file',
+              num_pages: 10, deadline: new Date(Date.now() - 3 * 86400000).toISOString(), estimated_cost: 120, has_rated_writer: true, has_rated_client: true
             },
             {
-              id: 1003,
-              request_id: 2003,
-              writer: null,
-              client: {
-                id: 4003,
-                name: 'Guest',
-                email: 'guest@example.com',
-                profile_picture: null,
-                rating: 4.3,
-                total_ratings: 7
-              },
-              status: 'pending',
-              created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-              completed_at: null,
-              course_name: 'Marketing Principles',
-              course_code: 'MKT201',
-              assignment_type: 'workshop_files',
-              num_pages: 7,
-              deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-              estimated_cost: 70,
-              has_rated_writer: false,
-              has_rated_client: false
+              id: 1003, request_id: 2003, writer: null,
+              client: { id: 4003, name: 'Guest', email: 'guest@example.com', profile_picture: null, rating: 4.3, total_ratings: 7 },
+              status: 'pending', created_at: new Date(Date.now() - 3 * 86400000).toISOString(), completed_at: null,
+              course_name: 'Marketing Principles', course_code: 'MKT201', assignment_type: 'workshop_file',
+              num_pages: 7, deadline: new Date(Date.now() + 5 * 86400000).toISOString(), estimated_cost: 70, has_rated_writer: false, has_rated_client: false
             }
-          ];
-          
-          setAssignments(sampleAssignments);
+          ]);
           setLoading(false);
           return;
         }
-        
-        const response = await fetch(API.assignments.my, {
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        
+        const response = await fetch(API.assignments.my, { credentials: 'include', headers: { 'Accept': 'application/json' } });
         if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            navigate('/login');
-            return;
-          }
+          if (response.status === 401 || response.status === 403) { navigate('/login'); return; }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const data = await response.json();
         setAssignments(data.assignments || []);
         setUserRole(data.role);
@@ -179,151 +99,73 @@ const MyAssignments: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchAssignments();
   }, [isGuest, navigate]);
 
   const handleCompleteAssignment = async (assignmentId: number) => {
     try {
-      const response = await fetch(`${API.baseUrl}/api/assignments/${assignmentId}/complete`, {
-        method: 'PUT',
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to complete assignment');
-      }
-
-      setAssignments(prevAssignments => 
-        prevAssignments.map(assignment => 
-          assignment.id === assignmentId 
-            ? { ...assignment, status: 'completed', completed_at: new Date().toISOString() } 
-            : assignment
-        )
-      );
+      const response = await fetch(`${API.baseUrl}/api/assignments/${assignmentId}/complete`, { method: 'PUT', credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to complete assignment');
+      setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: 'completed', completed_at: new Date().toISOString() } : a));
     } catch (error) {
       setError('Failed to complete assignment. Please try again.');
     }
   };
 
-  const openRatingModal = (assignment: Assignment) => {
-    setSelectedAssignment(assignment);
-    setShowRatingModal(true);
+  const handleContactWriter = (assignment: Assignment) => {
+    const contactUser = userRole === 'client' ? assignment.writer : assignment.client;
+    if (!contactUser?.whatsapp_number) return;
+    let phone = contactUser.whatsapp_number.replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    if (phone.length < 10) return;
+    const msg = encodeURIComponent(`Hi, regarding the assignment: ${assignment.course_name} (${assignment.course_code}) [ID: ${assignment.unique_id || assignment.id}]`);
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
+
+  const openRatingModal = (assignment: Assignment) => { setSelectedAssignment(assignment); setShowRatingModal(true); };
 
   const handleRatingSubmitted = () => {
     if (!selectedAssignment) return;
-    
-    setAssignments(prevAssignments => 
-      prevAssignments.map(assignment => {
-        if (assignment.id === selectedAssignment.id) {
-          if (userRole === 'client') {
-            return { ...assignment, has_rated_writer: true };
-          } else {
-            return { ...assignment, has_rated_client: true };
-          }
-        }
-        return assignment;
-      })
-    );
+    setAssignments(prev => prev.map(a => {
+      if (a.id === selectedAssignment.id) {
+        return userRole === 'client' ? { ...a, has_rated_writer: true } : { ...a, has_rated_client: true };
+      }
+      return a;
+    }));
   };
 
   const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) {
-      return new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    }
-    
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    
-    if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
-      if (dateString.includes('T')) {
-        const isoDate = new Date(dateString.split('T')[0]);
-        if (!isNaN(isoDate.getTime())) {
-          return isoDate.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          });
-        }
-      }
-      
-      if (!isNaN(Number(dateString))) {
-        const milliseconds = parseInt(dateString);
-        const timestampDate = new Date(milliseconds);
-        
-        if (!isNaN(timestampDate.getTime())) {
-          return timestampDate.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          });
-        }
-      }
-      
-      return new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    }
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    if (isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const getRatingButtonText = (assignment: Assignment) => {
-    if (!assignment.writer) {
-      return 'Pending Writer';
-    }
-    if (userRole === 'client' && assignment.has_rated_writer) {
-      return 'Writer Rated';
-    } else if (userRole === 'writer' && assignment.has_rated_client) {
-      return 'Client Rated';
-    } else {
-      return userRole === 'client' ? 'Rate Writer' : 'Rate Client';
-    }
+    if (!assignment.writer) return 'Pending Writer';
+    if (userRole === 'client' && assignment.has_rated_writer) return 'Rated';
+    if (userRole === 'writer' && assignment.has_rated_client) return 'Rated';
+    return userRole === 'client' ? 'Rate Writer' : 'Rate Client';
   };
 
   const isRatingDisabled = (assignment: Assignment) => {
-    return !assignment.writer || 
-           (userRole === 'client' && assignment.has_rated_writer) || 
-           (userRole === 'writer' && assignment.has_rated_client);
+    return !assignment.writer || (userRole === 'client' && assignment.has_rated_writer) || (userRole === 'writer' && assignment.has_rated_client);
   };
 
   const formatRating = (rating: any): string => {
     if (rating === null || rating === undefined) return '0.0';
-    if (typeof rating === 'number') return rating.toFixed(1);
-    try {
-      const numRating = parseFloat(String(rating));
-      return isNaN(numRating) ? '0.0' : numRating.toFixed(1);
-    } catch (e) {
-      return '0.0';
-    }
+    const num = typeof rating === 'number' ? rating : parseFloat(String(rating));
+    return isNaN(num) ? '0.0' : num.toFixed(1);
   };
 
   const updateWhatsAppNumber = async () => {
     try {
       setUpdatingWhatsApp(true);
       const response = await fetch(`${API.baseUrl}/api/users/update-whatsapp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ whatsapp_number: whatsappNumber }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update WhatsApp number');
-      }
-
+      if (!response.ok) throw new Error('Failed to update WhatsApp number');
       alert('WhatsApp number updated successfully! Please refresh the page.');
       setShowWhatsAppModal(false);
     } catch (error) {
@@ -334,261 +176,219 @@ const MyAssignments: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
+    const base = "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full";
     switch (status) {
-      case 'completed':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</span>;
-      case 'cancelled':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800"><AlertCircle className="w-3 h-3 mr-1" /> Cancelled</span>;
-      case 'pending':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800"><Clock className="w-3 h-3 mr-1" /> Pending</span>;
-      default:
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> In Progress</span>;
+      case 'completed': return <span className={cn(base, "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400")}><CheckCircle className="w-3 h-3" /> Completed</span>;
+      case 'cancelled': return <span className={cn(base, "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400")}><XCircle className="w-3 h-3" /> Cancelled</span>;
+      case 'pending': return <span className={cn(base, "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400")}><CircleDashed className="w-3 h-3" /> Pending</span>;
+      default: return <span className={cn(base, "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400")}><CircleDot className="w-3 h-3" /> In Progress</span>;
     }
   };
 
-  const formatAssignmentType = (type: string) => {
-    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  const formatAssignmentType = (type: string) => type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+  const filteredAssignments = assignments.filter(a => filterStatus === 'all' || a.status === filterStatus);
+  const stats = {
+    total: assignments.length,
+    active: assignments.filter(a => a.status === 'in_progress').length,
+    pending: assignments.filter(a => a.status === 'pending').length,
+    completed: assignments.filter(a => a.status === 'completed').length,
+  };
+
+  const canContact = (assignment: Assignment) => {
+    const contactUser = userRole === 'client' ? assignment.writer : assignment.client;
+    return contactUser?.whatsapp_number && assignment.status !== 'pending' && assignment.status !== 'cancelled';
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col font-sans">
       <Header title="My Assignments" />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="space-y-6">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-card rounded-xl border border-border overflow-hidden flex flex-col md:flex-row">
-                  <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border space-y-4">
-                    <div className="flex gap-2 mb-2">
-                      <Skeleton className="h-5 w-24 rounded" />
-                      <Skeleton className="h-5 w-20 rounded-full" />
-                    </div>
-                    <Skeleton className="h-8 w-3/4" />
-                    <Skeleton className="h-5 w-32 rounded" />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                    </div>
-                  </div>
-                  <div className="p-6 md:w-80 flex flex-col bg-muted/10">
-                    <Skeleton className="h-4 w-24 mb-4" />
-                    <div className="flex items-center gap-3 mb-6">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-20" />
-                      </div>
-                    </div>
-                    <div className="mt-auto">
-                      <Skeleton className="h-9 w-full rounded-md" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-4">
+            <Skeleton className="h-7 w-48 mb-6" />
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Assignments</h3>
-            <p className="text-muted-foreground mb-6">{error}</p>
-            <button 
-                onClick={() => window.location.reload()} 
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-6"
-            >
-                Try Again
-            </button>
+            <AlertCircle className="h-8 w-8 text-destructive mb-3" strokeWidth={1.5} />
+            <h3 className="text-base font-semibold text-foreground mb-1">Failed to load</h3>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <button onClick={() => window.location.reload()} className="text-sm font-medium text-primary hover:underline">Try again</button>
           </div>
         ) : assignments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center bg-card/50 rounded-3xl border border-border border-dashed relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
-            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative z-10">
-                <FileText className="h-10 w-10 text-primary" />
-            </div>
-            <h3 className="text-2xl font-bold text-foreground mb-3 relative z-10">No assignments found</h3>
-            <p className="text-lg text-muted-foreground mb-8 max-w-md relative z-10">
-              {userRole === 'client' 
-                ? "You haven't created any assignment requests yet. Start by posting your first assignment." 
-                : "You haven't accepted any assignments yet. Browse open requests to get started."}
+          <div className="flex flex-col items-center justify-center py-20 text-center max-w-sm mx-auto">
+            <FileText className="h-8 w-8 text-muted-foreground mb-3" strokeWidth={1.5} />
+            <h3 className="text-base font-semibold text-foreground mb-1">No assignments yet</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              {userRole === 'client' ? "Post your first assignment to connect with writers." : "Browse the marketplace to find work."}
             </p>
             <button
-              onClick={() => navigate(userRole === 'client' ? '/create-assignment' : '/browse-requests')}
-              className="relative z-10 inline-flex items-center justify-center rounded-full text-base font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:scale-105 h-12 px-8"
+              onClick={() => navigate(userRole === 'client' ? '/find-writer' : '/browse-requests')}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 transition-colors"
             >
-              {userRole === 'client' ? <><PlusCircle className="w-5 h-5 mr-2" /> Create Request</> : <><Search className="w-5 h-5 mr-2" /> Browse Requests</>}
+              {userRole === 'client' ? <><PlusCircle className="w-4 h-4 mr-1.5" /> Post Assignment</> : <><Search className="w-4 h-4 mr-1.5" /> Browse</>}
             </button>
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-start gap-3">
-              <Star className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <h2 className="text-sm font-semibold text-foreground mb-1">Rating Instructions</h2>
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">Assignments</h1>
                 <p className="text-sm text-muted-foreground">
-                  You can rate {userRole === 'client' ? 'writers' : 'clients'} once an assignment has been accepted. 
-                  Your ratings help build trust in our community and provide valuable feedback.
+                  {stats.active} active, {stats.pending} pending, {stats.completed} completed
                 </p>
               </div>
+              <div className="flex items-center bg-muted p-0.5 rounded-md border border-border">
+                {(['all', 'pending', 'in_progress', 'completed'] as const).map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setFilterStatus(status)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-medium rounded-sm transition-colors",
+                      filterStatus === status ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {status === 'in_progress' ? 'Active' : status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
-            
-            <div className="grid grid-cols-1 gap-6">
-              {assignments.map((assignment) => (
-                <div key={assignment.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row">
-                  {/* Left side: Assignment Details */}
-                  <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-border">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border">
-                            {formatAssignmentType(assignment.assignment_type)}
-                          </span>
-                          {getStatusBadge(assignment.status)}
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground">
-                          {assignment.course_name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">{assignment.course_code}</span>
-                          {assignment.unique_id && (
-                            <span className="text-xs font-medium text-muted-foreground flex items-center">
-                              <FileDigit className="h-3 w-3 mr-1" /> ID: {assignment.unique_id}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><FileText className="h-3.5 w-3.5 mr-1" /> Pages</span>
-                        <p className="text-sm font-medium text-foreground">{assignment.num_pages}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Cost</span>
-                        <p className="text-sm font-semibold text-primary">₹{assignment.estimated_cost}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><Calendar className="h-3.5 w-3.5 mr-1" /> Created</span>
-                        <p className="text-sm font-medium text-foreground">{formatDate(assignment.created_at)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> Deadline</span>
-                        <p className="text-sm font-medium text-foreground">{formatDate(assignment.deadline)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Right side: User & Actions */}
-                  <div className="p-6 md:w-80 flex flex-col bg-muted/10">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                      {assignment.writer ? (userRole === 'client' ? 'Assigned Writer' : 'Client') : 'Status'}
-                    </h4>
-                    
-                    {assignment.writer || userRole === 'writer' ? (
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border overflow-hidden">
-                          {(userRole === 'client' ? assignment.writer?.profile_picture : assignment.client.profile_picture) ? (
-                            <img 
-                              src={userRole === 'client' ? assignment.writer?.profile_picture! : assignment.client.profile_picture!} 
-                              alt="Profile" 
-                              className="h-full w-full object-cover"
-                            />
+
+            <div className="space-y-3">
+              {filteredAssignments.length === 0 ? (
+                <div className="py-10 text-center border border-border rounded-lg bg-card">
+                  <p className="text-sm text-muted-foreground">No assignments match this filter.</p>
+                  <button onClick={() => setFilterStatus('all')} className="mt-1 text-sm text-primary hover:underline font-medium">Clear filter</button>
+                </div>
+              ) : (
+                filteredAssignments.map(assignment => {
+                  const assignedUser = userRole === 'client' ? assignment.writer : assignment.client;
+                  const isOverdue = assignment.status === 'in_progress' && new Date(assignment.deadline) < new Date();
+                  return (
+                    <div key={assignment.id} className="border border-border rounded-lg bg-card overflow-hidden">
+                      <div className="p-4 sm:p-5">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">{formatAssignmentType(assignment.assignment_type)}</span>
+                              {getStatusBadge(assignment.status)}
+                            </div>
+                            <h3 className="text-base font-semibold text-foreground">{assignment.course_name}</h3>
+                            <p className="text-xs text-muted-foreground font-medium mt-0.5">{assignment.course_code}{assignment.unique_id && <span className="ml-2 font-mono">#{assignment.unique_id}</span>}</p>
+                          </div>
+
+                          {assignedUser ? (
+                            <div className="flex items-center gap-3 shrink-0 border border-border rounded-lg px-3 py-2 bg-background">
+                              <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 border border-border overflow-hidden">
+                                {assignedUser.profile_picture ? (
+                                  <img src={assignedUser.profile_picture} alt={assignedUser.name} className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="text-sm font-medium text-muted-foreground">{assignedUser.name.charAt(0)}</span>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground leading-tight">{assignedUser.name}</p>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                                  {formatRating(assignedUser.rating)} <span>({assignedUser.total_ratings})</span>
+                                </div>
+                              </div>
+                            </div>
                           ) : (
-                            <User className="h-5 w-5 text-muted-foreground" />
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-lg px-3 py-2 bg-background">
+                              <CircleDashed className="h-3.5 w-3.5 animate-pulse" />
+                              Waiting for a writer to accept
+                            </div>
                           )}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground line-clamp-1">
-                            {userRole === 'client' ? assignment.writer?.name : assignment.client.name}
-                          </p>
-                          <div className="flex items-center text-xs text-muted-foreground mt-0.5">
-                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-1" />
-                            {userRole === 'client' ? 
-                              formatRating(assignment.writer?.rating) : 
-                              formatRating(assignment.client.rating)} 
-                            <span className="ml-1">
-                              ({userRole === 'client' ? 
-                                assignment.writer?.total_ratings || 0 : 
-                                assignment.client.total_ratings || 0})
-                            </span>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <span className="text-muted-foreground flex items-center gap-1 mb-0.5"><FileText className="w-3 h-3" /> Pages</span>
+                            <span className="font-medium text-foreground">{assignment.num_pages}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground flex items-center gap-1 mb-0.5">₹ Cost</span>
+                            <span className="font-medium text-foreground">₹{Number(assignment.estimated_cost).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground flex items-center gap-1 mb-0.5"><Calendar className="w-3 h-3" /> Created</span>
+                            <span className="font-medium text-foreground">{formatDate(assignment.created_at)}</span>
+                          </div>
+                          <div>
+                            <span className={cn("flex items-center gap-1 mb-0.5", isOverdue ? "text-destructive" : "text-muted-foreground")}><Clock className="w-3 h-3" /> Deadline</span>
+                            <span className={cn("font-medium", isOverdue ? "text-destructive" : "text-foreground")}>{formatDate(assignment.deadline)}</span>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Waiting for a writer to accept
-                      </div>
-                    )}
-                    
-                    <div className="mt-auto space-y-2">
-                      {userRole === 'writer' && assignment.status === 'in_progress' && (
-                        <button
-                          onClick={() => handleCompleteAssignment(assignment.id)}
-                          className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Completed
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => openRatingModal(assignment)}
-                        disabled={isRatingDisabled(assignment)}
-                        className={cn(
-                          "w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-9",
-                          isRatingDisabled(assignment)
-                            ? "bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed"
-                            : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+
+                      <div className="border-t border-border px-4 sm:px-5 py-3 flex flex-wrap items-center gap-2 bg-muted/30">
+                        {canContact(assignment) && (
+                          <button
+                            onClick={() => handleContactWriter(assignment)}
+                            className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-8 px-3 border border-border bg-background text-foreground hover:bg-accent"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                            Contact {userRole === 'client' ? 'Writer' : 'Client'}
+                          </button>
                         )}
-                      >
-                        <Star className={cn("w-4 h-4 mr-2", !isRatingDisabled(assignment) && "fill-current")} />
-                        {getRatingButtonText(assignment)}
-                      </button>
+
+                        {userRole === 'writer' && assignment.status === 'in_progress' && (
+                          <button
+                            onClick={() => handleCompleteAssignment(assignment.id)}
+                            className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-8 px-3 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Mark as Done
+                          </button>
+                        )}
+
+                        {assignment.status === 'completed' && (
+                          <button
+                            onClick={() => openRatingModal(assignment)}
+                            disabled={isRatingDisabled(assignment)}
+                            className={cn(
+                              "inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors h-8 px-3",
+                              isRatingDisabled(assignment)
+                                ? "text-muted-foreground bg-muted border border-border cursor-default"
+                                : "bg-primary text-primary-foreground hover:bg-primary/90"
+                            )}
+                          >
+                            <Star className={cn("w-3.5 h-3.5 mr-1.5", !isRatingDisabled(assignment) && "fill-primary-foreground")} />
+                            {getRatingButtonText(assignment)}
+                          </button>
+                        )}
+
+                        {assignment.status === 'pending' && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Pending writer acceptance
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })
+              )}
             </div>
           </div>
         )}
       </main>
 
-      {/* WhatsApp Number Modal */}
       {showWhatsAppModal && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border shadow-lg rounded-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-2">Update WhatsApp Number</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Your WhatsApp number is missing or incorrect. Please enter your WhatsApp number with country code (e.g., 919876543210 for India).
-              </p>
-              <input
-                type="text"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-                placeholder="e.g. 919876543210"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mb-6"
-              />
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowWhatsAppModal(false)}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={updateWhatsAppNumber}
-                  disabled={updatingWhatsApp || !whatsappNumber}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 disabled:opacity-50"
-                >
-                  {updatingWhatsApp ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...</> : 'Update'}
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg max-w-md w-full p-6">
+            <h3 className="text-base font-semibold text-foreground mb-1">Update WhatsApp Number</h3>
+            <p className="text-sm text-muted-foreground mb-4">Enter your WhatsApp number with country code.</p>
+            <input
+              type="text" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)}
+              placeholder="e.g. 919876543210"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowWhatsAppModal(false)} className="h-8 px-3 text-sm rounded-md border border-border hover:bg-accent transition-colors">Cancel</button>
+              <button onClick={updateWhatsAppNumber} disabled={updatingWhatsApp || !whatsappNumber} className="h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">
+                {updatingWhatsApp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update'}
+              </button>
             </div>
           </div>
         </div>
@@ -596,10 +396,9 @@ const MyAssignments: React.FC = () => {
 
       {showRatingModal && selectedAssignment && (
         <RatingModal
-          isOpen={showRatingModal}
-          onClose={() => setShowRatingModal(false)}
-          ratedUserId={selectedAssignment && (userRole === 'client' ? selectedAssignment.writer?.id || 0 : selectedAssignment.client.id)}
-          ratedUserName={selectedAssignment && (userRole === 'client' ? selectedAssignment.writer?.name || 'Unknown' : selectedAssignment.client.name)}
+          isOpen={showRatingModal} onClose={() => setShowRatingModal(false)}
+          ratedUserId={userRole === 'client' ? selectedAssignment.writer?.id || 0 : selectedAssignment.client.id}
+          ratedUserName={userRole === 'client' ? selectedAssignment.writer?.name || 'Unknown' : selectedAssignment.client.name}
           assignmentRequestId={selectedAssignment?.request_id || 0}
           onRatingSubmitted={handleRatingSubmitted}
           userType={userRole === 'client' ? 'writer' : 'client'}
