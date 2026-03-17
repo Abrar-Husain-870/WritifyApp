@@ -30,31 +30,6 @@ const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
 const path = require('path');
 
-const resolveFrontendUrl = () => {
-    const envUrl = process.env.FRONTEND_URL;
-    if (!envUrl) return 'http://localhost:3000';
-
-    const trimmed = String(envUrl).trim().replace(/\/$/, '');
-
-    // Handle common dev misconfigurations where protocol is missing
-    // Examples: "localhost:5000", "127.0.0.1:5000"
-    if (/^(localhost|127\.0\.0\.1):5000$/i.test(trimmed)) {
-        return `http://${trimmed.replace(':5000', ':3000')}`;
-    }
-
-    try {
-        const url = new URL(trimmed);
-        if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && url.port === '5000') {
-            url.port = '3000';
-        }
-        return url.toString().replace(/\/$/, '');
-    } catch {
-        return trimmed;
-    }
-};
-
-const FRONTEND_URL = resolveFrontendUrl();
-
 // Configuration
 const ASSIGNMENT_EXPIRATION_DAYS = 7; // Assignment requests expire after 7 days
 
@@ -471,7 +446,7 @@ app.get('/auth/google/callback', security.authLimiter, (req, res, next) => {
         // Check if email is locked due to too many failed attempts
         if (info && info.email && security.isAccountLocked(info.email)) {
             console.error('Account locked due to too many failed attempts:', info.email);
-            return res.redirect(`${FRONTEND_URL}/login?error=account_locked&t=${Date.now()}`);
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=account_locked&t=${Date.now()}`);
         }
         console.log('Google OAuth callback - Error:', err?.message);
         console.log('Google OAuth callback - Info:', info?.message);
@@ -498,7 +473,7 @@ app.get('/auth/google/callback', security.authLimiter, (req, res, next) => {
                 }
                 
                 // Redirect with unauthorized error parameter
-                return res.redirect(`${FRONTEND_URL}/login?error=unauthorized&t=${Date.now()}`);
+                return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=unauthorized&t=${Date.now()}`);
             });
             return;
         }
@@ -512,7 +487,7 @@ app.get('/auth/google/callback', security.authLimiter, (req, res, next) => {
             
             console.log('Google OAuth callback successful');
             // Add cache-busting parameter to prevent caching issues
-            return res.redirect(`${FRONTEND_URL}?t=${Date.now()}`);
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}?t=${Date.now()}`);
         });
     })(req, res, next);
 });
@@ -1118,166 +1093,193 @@ app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
         // For student role, treat them as a client
         const effectiveRole = userRole === 'student' ? 'client' : userRole;
 
-        const ratingsResult = await pool.query(`
-            SELECT assignment_request_id, rated_id 
-            FROM ratings 
-            WHERE rater_id = $1
-        `, [userId]);
+        if (effectiveRole === 'client') {
+            // Get client assignments
+            const result = await pool.query(`
+                SELECT 
+                    ar.id as request_id,
+                    ar.course_name,
+                    ar.course_code,
+                    ar.assignment_type,
+                    ar.num_pages,
+                    ar.deadline,
+                    ar.estimated_cost,
+                    COALESCE(a.created_at, ar.created_at) as created_at,
+                    COALESCE(a.status, 'pending') as status,
+                    a.completed_at,
+                    writer.id as writer_id,
+                    writer.name as writer_name,
+                    writer.email as writer_email,
+                    writer.profile_picture as writer_profile_picture,
+                    COALESCE(writer.rating::numeric, 0.0) as writer_rating,
+                    COALESCE(writer.total_ratings, 0) as writer_total_ratings,
+                    writer.whatsapp_number as writer_whatsapp_number,
+                    client.id as client_id,
+                    client.name as client_name,
+                    client.email as client_email,
+                    client.profile_picture as client_profile_picture,
+                    COALESCE(client.rating::numeric, 0.0) as client_rating,
+                    COALESCE(client.total_ratings, 0) as client_total_ratings,
+                    client.whatsapp_number as client_whatsapp_number,
+                    ar.unique_id
+                FROM assignment_requests ar
+                LEFT JOIN assignments a ON ar.id = a.request_id
+                LEFT JOIN users writer ON a.writer_id = writer.id
+                JOIN users client ON ar.client_id = client.id
+                WHERE ar.client_id = $1
+                ORDER BY ar.created_at DESC
+            `, [userId]);
+            
+            console.log(`Found ${result.rows.length} assignments for client ${userId}`);
 
-        const ratedAssignments = new Map();
-        ratingsResult.rows.forEach(rating => {
-            ratedAssignments.set(rating.assignment_request_id, rating.rated_id);
-        });
+            // Get ratings submitted by this user
+            const ratingsResult = await pool.query(`
+                SELECT assignment_request_id, rated_id 
+                FROM ratings 
+                WHERE rater_id = $1
+            `, [userId]);
+            
+            // Create a map of rated assignments for quick lookup
+            const ratedAssignments = new Map();
+            ratingsResult.rows.forEach(rating => {
+                ratedAssignments.set(rating.assignment_request_id, rating.rated_id);
+            });
 
-        const clientAssignmentsResult = await pool.query(`
-            SELECT 
-                ar.id as request_id,
-                ar.course_name,
-                ar.course_code,
-                ar.assignment_type,
-                ar.num_pages,
-                ar.deadline,
-                ar.estimated_cost,
-                a.created_at,
-                COALESCE(a.status, 'pending') as status,
-                a.completed_at,
-                writer.id as writer_id,
-                writer.name as writer_name,
-                writer.email as writer_email,
-                writer.profile_picture as writer_profile_picture,
-                COALESCE(writer.rating::numeric, 0.0) as writer_rating,
-                COALESCE(writer.total_ratings, 0) as writer_total_ratings,
-                writer.whatsapp_number as writer_whatsapp_number,
-                client.id as client_id,
-                client.name as client_name,
-                client.email as client_email,
-                client.profile_picture as client_profile_picture,
-                COALESCE(client.rating::numeric, 0.0) as client_rating,
-                COALESCE(client.total_ratings, 0) as client_total_ratings,
-                client.whatsapp_number as client_whatsapp_number
-            FROM assignment_requests ar
-            LEFT JOIN assignments a ON ar.id = a.request_id
-            LEFT JOIN users writer ON a.writer_id = writer.id
-            JOIN users client ON ar.client_id = client.id
-            WHERE ar.client_id = $1
-            ORDER BY ar.created_at DESC
-        `, [userId]);
+            // Transform the data
+            const transformedAssignments = result.rows.map(a => ({
+                id: a.request_id,
+                request_id: a.request_id,
+                writer: a.writer_id ? {
+                    id: a.writer_id,
+                    name: a.writer_name,
+                    email: a.writer_email,
+                    profile_picture: a.writer_profile_picture,
+                    rating: a.writer_rating,
+                    total_ratings: a.writer_total_ratings,
+                    whatsapp_number: a.writer_whatsapp_number
+                } : null,
+                client: {
+                    id: a.client_id,
+                    name: a.client_name,
+                    email: a.client_email,
+                    profile_picture: a.client_profile_picture,
+                    rating: a.client_rating,
+                    total_ratings: a.client_total_ratings,
+                    whatsapp_number: a.client_whatsapp_number
+                },
+                status: a.status,
+                created_at: a.created_at,
+                completed_at: a.completed_at,
+                course_name: a.course_name,
+                course_code: a.course_code,
+                assignment_type: a.assignment_type,
+                num_pages: a.num_pages,
+                deadline: a.deadline,
+                estimated_cost: a.estimated_cost,
+                unique_id: a.unique_id,
+                has_rated_writer: a.writer_id ? ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.writer_id : false,
+                has_rated_client: false
+            }));
 
-        const writerAssignmentsResult = await pool.query(`
-            SELECT 
-                ar.id as request_id,
-                ar.course_name,
-                ar.course_code,
-                ar.assignment_type,
-                ar.num_pages,
-                ar.deadline,
-                ar.estimated_cost,
-                a.created_at,
-                a.status,
-                a.completed_at,
-                writer.id as writer_id,
-                writer.name as writer_name,
-                writer.email as writer_email,
-                writer.profile_picture as writer_profile_picture,
-                COALESCE(writer.rating::numeric, 0.0) as writer_rating,
-                COALESCE(writer.total_ratings, 0) as writer_total_ratings,
-                writer.whatsapp_number as writer_whatsapp_number,
-                client.id as client_id,
-                client.name as client_name,
-                client.email as client_email,
-                client.profile_picture as client_profile_picture,
-                COALESCE(client.rating::numeric, 0.0) as client_rating,
-                COALESCE(client.total_ratings, 0) as client_total_ratings,
-                client.whatsapp_number as client_whatsapp_number
-            FROM assignments a
-            JOIN assignment_requests ar ON a.request_id = ar.id
-            JOIN users writer ON a.writer_id = writer.id
-            JOIN users client ON ar.client_id = client.id
-            WHERE a.writer_id = $1
-            ORDER BY a.created_at DESC
-        `, [userId]);
+            res.json({ 
+                role: 'client',
+                assignments: transformedAssignments 
+            });
+        } else if (effectiveRole === 'writer') {
+            // Get writer assignments
+            const result = await pool.query(`
+                SELECT 
+                    ar.id as request_id,
+                    ar.course_name,
+                    ar.course_code,
+                    ar.assignment_type,
+                    ar.num_pages,
+                    ar.deadline,
+                    ar.estimated_cost,
+                    COALESCE(a.created_at, ar.created_at) as created_at,
+                    a.status,
+                    a.completed_at,
+                    writer.id as writer_id,
+                    writer.name as writer_name,
+                    writer.email as writer_email,
+                    writer.profile_picture as writer_profile_picture,
+                    COALESCE(writer.rating::numeric, 0.0) as writer_rating,
+                    COALESCE(writer.total_ratings, 0) as writer_total_ratings,
+                    writer.whatsapp_number as writer_whatsapp_number,
+                    client.id as client_id,
+                    client.name as client_name,
+                    client.email as client_email,
+                    client.profile_picture as client_profile_picture,
+                    COALESCE(client.rating::numeric, 0.0) as client_rating,
+                    COALESCE(client.total_ratings, 0) as client_total_ratings,
+                    client.whatsapp_number as client_whatsapp_number,
+                    ar.unique_id
+                FROM assignments a
+                JOIN assignment_requests ar ON a.request_id = ar.id
+                JOIN users writer ON a.writer_id = writer.id
+                JOIN users client ON ar.client_id = client.id
+                WHERE a.writer_id = $1
+                ORDER BY a.created_at DESC
+            `, [userId]);
+            
+            console.log(`Found ${result.rows.length} assignments for writer ${userId}`);
 
-        console.log(`Found ${clientAssignmentsResult.rows.length} assignments for client ${userId}`);
-        console.log(`Found ${writerAssignmentsResult.rows.length} assignments for writer ${userId}`);
+            // Get ratings submitted by this user
+            const ratingsResult = await pool.query(`
+                SELECT assignment_request_id, rated_id 
+                FROM ratings 
+                WHERE rater_id = $1
+            `, [userId]);
+            
+            // Create a map of rated assignments for quick lookup
+            const ratedAssignments = new Map();
+            ratingsResult.rows.forEach(rating => {
+                ratedAssignments.set(rating.assignment_request_id, rating.rated_id);
+            });
 
-        const clientAssignments = clientAssignmentsResult.rows.map(a => ({
-            id: a.request_id,
-            request_id: a.request_id,
-            viewer_role: 'client',
-            writer: a.writer_id ? {
-                id: a.writer_id,
-                name: a.writer_name,
-                email: a.writer_email,
-                profile_picture: a.writer_profile_picture,
-                rating: a.writer_rating,
-                total_ratings: a.writer_total_ratings,
-                whatsapp_number: a.writer_whatsapp_number
-            } : null,
-            client: {
-                id: a.client_id,
-                name: a.client_name,
-                email: a.client_email,
-                profile_picture: a.client_profile_picture,
-                rating: a.client_rating,
-                total_ratings: a.client_total_ratings,
-                whatsapp_number: a.client_whatsapp_number
-            },
-            status: a.status,
-            created_at: a.created_at,
-            completed_at: a.completed_at,
-            course_name: a.course_name,
-            course_code: a.course_code,
-            assignment_type: a.assignment_type,
-            num_pages: a.num_pages,
-            deadline: a.deadline,
-            estimated_cost: a.estimated_cost,
-            has_rated_writer: a.writer_id ? ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.writer_id : false,
-            has_rated_client: false
-        }));
+            // Transform the data
+            const transformedAssignments = result.rows.map(a => ({
+                id: a.request_id,
+                request_id: a.request_id,
+                writer: {
+                    id: a.writer_id,
+                    name: a.writer_name,
+                    email: a.writer_email,
+                    profile_picture: a.writer_profile_picture,
+                    rating: a.writer_rating,
+                    total_ratings: a.writer_total_ratings,
+                    whatsapp_number: a.writer_whatsapp_number
+                },
+                client: {
+                    id: a.client_id,
+                    name: a.client_name,
+                    email: a.client_email,
+                    profile_picture: a.client_profile_picture,
+                    rating: a.client_rating,
+                    total_ratings: a.client_total_ratings,
+                    whatsapp_number: a.client_whatsapp_number
+                },
+                status: a.status,
+                created_at: a.created_at,
+                completed_at: a.completed_at,
+                course_name: a.course_name,
+                course_code: a.course_code,
+                assignment_type: a.assignment_type,
+                num_pages: a.num_pages,
+                deadline: a.deadline,
+                estimated_cost: a.estimated_cost,
+                unique_id: a.unique_id,
+                has_rated_writer: false,
+                has_rated_client: ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.client_id
+            }));
 
-        const writerAssignments = writerAssignmentsResult.rows.map(a => ({
-            id: a.request_id,
-            request_id: a.request_id,
-            viewer_role: 'writer',
-            writer: {
-                id: a.writer_id,
-                name: a.writer_name,
-                email: a.writer_email,
-                profile_picture: a.writer_profile_picture,
-                rating: a.writer_rating,
-                total_ratings: a.writer_total_ratings,
-                whatsapp_number: a.writer_whatsapp_number
-            },
-            client: {
-                id: a.client_id,
-                name: a.client_name,
-                email: a.client_email,
-                profile_picture: a.client_profile_picture,
-                rating: a.client_rating,
-                total_ratings: a.client_total_ratings,
-                whatsapp_number: a.client_whatsapp_number
-            },
-            status: a.status,
-            created_at: a.created_at,
-            completed_at: a.completed_at,
-            course_name: a.course_name,
-            course_code: a.course_code,
-            assignment_type: a.assignment_type,
-            num_pages: a.num_pages,
-            deadline: a.deadline,
-            estimated_cost: a.estimated_cost,
-            has_rated_writer: false,
-            has_rated_client: ratedAssignments.has(a.request_id) && ratedAssignments.get(a.request_id) === a.client_id
-        }));
-
-        const legacyAssignments = effectiveRole === 'writer' ? writerAssignments : clientAssignments;
-
-        res.json({
-            role: effectiveRole,
-            assignments: legacyAssignments,
-            clientAssignments,
-            writerAssignments
-        });
+            res.json({ 
+                role: effectiveRole,
+                assignments: transformedAssignments 
+            });
+        } else {
+            return res.status(403).json({ error: 'Invalid user role' });
+        }
     } catch (error) {
         console.error('Error fetching assignments:', error);
         res.status(500).json({ error: 'Server error' });
@@ -1844,6 +1846,14 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Handle 404 routes
+app.use((req, res) => {
+    res.status(404).json({ 
+        error: 'Not Found',
+        message: 'The requested resource was not found' 
+    });
+});
+
 // Add a global flag to track logout operations
 let isLogoutInProgress = false;
 
@@ -1860,8 +1870,30 @@ const preventDbOperationsDuringLogout = (req, res, next) => {
 // Apply this middleware to all routes
 app.use(preventDbOperationsDuringLogout);
 
+// Set up cron job to clean up expired assignment requests (runs daily at midnight)
+cron.schedule('0 0 * * *', async () => {
+    console.log('Running cleanup for expired assignment requests...');
+    try {
+        // Calculate the date 7 days ago
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - ASSIGNMENT_EXPIRATION_DAYS);
+        const sevenDaysAgoStr = sevenDaysAgo.toISOString();
+        
+        // Delete expired open assignment requests
+        const result = await pool.query(
+            'DELETE FROM assignment_requests WHERE status = $1 AND created_at < $2 RETURNING id',
+            ['open', sevenDaysAgoStr]
+        );
+        
+        console.log(`Successfully deleted ${result.rowCount} expired assignment requests`);
+    } catch (error) {
+        console.error('Error cleaning up expired assignment requests:', error);
+    }
+});
+
 // API logout route that matches frontend configuration
 app.get('/api/auth/logout', (req, res) => {
+    // Redirect to the main logout handler
     console.log('API logout route called, redirecting to main logout handler');
     res.redirect('/auth/logout');
 });
@@ -1874,7 +1906,7 @@ app.get('/auth/logout', (req, res) => {
     isLogoutInProgress = true;
     
     // Define the frontend URL based on environment
-    const frontendURL = FRONTEND_URL;
+    const frontendURL = process.env.FRONTEND_URL;
     
     // Store the user ID before logout
     const userId = req.user?.id;
@@ -1887,30 +1919,35 @@ app.get('/auth/logout', (req, res) => {
             isLogoutInProgress = false;
             return res.status(500).json({ error: 'Failed to logout' });
         }
-
-        if (!req.session) {
+        
+        // CRITICAL FIX: Don't destroy the session, just mark it as logged out
+        // This prevents any potential cascading effects that might trigger data deletion
+        if (req.session) {
+            req.session.isLoggedOut = true;
+            req.session.save(function(saveErr) {
+                if (saveErr) {
+                    console.error('Session save error:', saveErr);
+                }
+                
+                // Log the successful logout
+                console.log(`User ${userId} logged out successfully without session destruction`);
+                
+                // Reset the flag after successful logout
+                isLogoutInProgress = false;
+                
+                // Redirect to the logout-complete.html page instead of login
+                // This will trigger the postMessage event to complete the logout process
+                res.redirect(`${frontendURL}/logout-complete.html`);
+            });
+        } else {
+            // Redirect to logout-complete.html if session doesn't exist
             console.log(`User ${userId} logged out (no session found)`);
+            
+            // Reset the flag
             isLogoutInProgress = false;
-            return res.redirect(`${frontendURL}/logout-complete.html`);
+            
+            res.redirect(`${frontendURL}/logout-complete.html`);
         }
-
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-        };
-
-        req.session.destroy((destroyErr) => {
-            if (destroyErr) {
-                console.error('Session destruction error:', destroyErr);
-            }
-
-            res.clearCookie('connect.sid', cookieOptions);
-
-            console.log(`User ${userId} logged out successfully with session destruction`);
-            isLogoutInProgress = false;
-            return res.redirect(`${frontendURL}/logout-complete.html`);
-        });
     });
 });
 
@@ -1918,14 +1955,6 @@ app.get('/auth/logout', (req, res) => {
 // This should be the last route handler
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-});
-
-// Handle 404 routes
-app.use((req, res) => {
-    res.status(404).json({ 
-        error: 'Not Found',
-        message: 'The requested resource was not found' 
-    });
 });
 
 const PORT = process.env.PORT;

@@ -7,7 +7,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -48,19 +48,6 @@ module.exports = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      animation: {
-        gradient: 'gradient 15s ease infinite',
-      },
-      keyframes: {
-        gradient: {
-          '0%, 100%': {
-            'background-position': '0% 50%',
-          },
-          '50%': {
-            'background-position': '100% 50%',
-          },
-        },
       },
     },
   },
