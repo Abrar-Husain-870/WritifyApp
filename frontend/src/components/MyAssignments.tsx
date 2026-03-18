@@ -262,11 +262,12 @@ const MyAssignments: React.FC = () => {
                   <button onClick={() => setFilterStatus('all')} className="mt-1 text-sm text-primary hover:underline font-medium">Clear filter</button>
                 </div>
               ) : (
-                filteredAssignments.map(assignment => {
+                filteredAssignments.map((assignment, index) => {
                   const assignedUser = userRole === 'client' ? assignment.writer : assignment.client;
                   const isOverdue = assignment.status === 'in_progress' && new Date(assignment.deadline) < new Date();
+                  const assignmentKey = `${assignment.unique_id || assignment.id}-${assignment.request_id}-${assignment.created_at || ''}-${index}`;
                   return (
-                    <div key={assignment.id} className="border border-border rounded-lg bg-card overflow-hidden">
+                    <div key={assignmentKey} className="border border-border rounded-lg bg-card overflow-hidden">
                       <div className="p-4 sm:p-5">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
                           <div className="min-w-0">

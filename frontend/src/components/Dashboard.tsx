@@ -49,8 +49,8 @@ const Dashboard: React.FC = () => {
             <Header title="Dashboard" showBackButton={false} />
 
             {isGuest && (
-                <div className="border-b border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5">
-                    <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+                <div className="border-b border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
                             <AlertTriangle className="h-4 w-4 shrink-0" />
                             <span><strong className="font-medium">Guest Mode.</strong> Some features are limited.</span>
@@ -62,8 +62,9 @@ const Dashboard: React.FC = () => {
                 </div>
             )}
 
-            <main className="flex-1 max-w-5xl w-full mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                <div className="mb-10">
+            <main className="flex-1">
+                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                <div className="mb-6 sm:mb-8">
                     {loading ? (
                         <>
                             <Skeleton className="h-7 w-56 mb-2" />
@@ -80,7 +81,7 @@ const Dashboard: React.FC = () => {
                         </>
                     )}
 
-                    <div className="flex gap-2 mt-5">
+                    <div className="flex flex-wrap items-center gap-3 mt-6">
                         <button 
                             onClick={() => navigate('/find-writer')}
                             className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground px-4 h-9 text-sm font-medium hover:bg-primary/90 transition-colors"
@@ -100,12 +101,12 @@ const Dashboard: React.FC = () => {
 
                 <div>
                     <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {actions.map((action, index) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {actions.map((action) => (
                             <button 
-                                key={index}
+                                key={action.path}
                                 onClick={() => navigate(action.path)}
-                                className="group flex items-start gap-3 p-4 rounded-lg border border-border bg-card hover:border-foreground/15 transition-colors text-left"
+                                className="group h-full flex items-start gap-3 p-5 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-foreground/15 transition-all text-left"
                             >
                                 <div className="shrink-0 mt-0.5">
                                     <action.icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
@@ -122,6 +123,7 @@ const Dashboard: React.FC = () => {
                             </button>
                         ))}
                     </div>
+                </div>
                 </div>
             </main>
         </div>

@@ -14,7 +14,7 @@ interface HeaderProps {
 
 const navItems = [
     { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Assignments', path: '/my-assignments' },
+    { name: 'My Assignments', path: '/my-assignments' },
     { name: 'Find Writer', path: '/find-writer' },
     { name: 'Browse', path: '/browse-requests' },
 ];
@@ -31,11 +31,11 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <div className="w-full px-4 sm:px-6 lg:px-8">
-                <div className="flex h-14 items-center justify-between gap-4">
+            <div className="w-full px-0">
+                <div className="grid grid-cols-[auto,1fr,auto] items-center h-16 w-full gap-4">
                     <div className="flex items-center gap-4">
                         {!showBackButton ? (
-                            <Logo iconClassName="h-20 sm:h-22" />
+                            <Logo className="min-w-[160px]" iconClassName="h-13 sm:h-14" />
                         ) : (
                             <div className="flex items-center gap-2.5">
                                 <button
@@ -47,8 +47,10 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
                                 <span className="text-sm font-medium text-foreground hidden sm:block">{title}</span>
                             </div>
                         )}
+                    </div>
 
-                        <nav className="hidden md:flex items-center gap-0.5 ml-6">
+                    <div className="hidden md:flex justify-center">
+                        <nav className="flex items-center gap-0.5">
                             {navItems.map((item) => {
                                 const isActive = location.pathname === item.path;
                                 return (
@@ -71,8 +73,8 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
                             })}
                         </nav>
                     </div>
-                    
-                    <div className="flex items-center gap-1">
+
+                    <div className="flex items-center gap-1 justify-self-end">
                         <DarkModeToggle />
 
                         {!isGuest && (

@@ -63,7 +63,7 @@ const Login: React.FC = () => {
         <div className="min-h-screen flex flex-col justify-center items-center bg-background p-4 sm:p-8">
             <div className="w-full max-w-sm flex flex-col items-center">
                 <div className="mb-10 animate-[fadeFloat_1s_ease-out_both]">
-                    <Logo iconClassName="h-20 sm:h-24" />
+                    <Logo iconClassName="h-32 sm:h-36 md:h-40 drop-shadow-md" />
                 </div>
                 
                 <div className="w-full space-y-6">
