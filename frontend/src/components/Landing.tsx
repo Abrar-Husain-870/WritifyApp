@@ -11,8 +11,8 @@ const Landing: React.FC = () => {
         <div className="min-h-screen bg-background flex flex-col font-sans">
             <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <div className="w-full px-0">
-                    <div className="flex h-16 items-center justify-start">
-                        <Logo className="min-w-[160px]" iconClassName="h-13 sm:h-14" />
+                    <div className="flex h-14 sm:h-16 items-center justify-start">
+                        <Logo className="min-w-[120px] sm:min-w-[160px] lg:min-w-[180px]" iconClassName="h-10 sm:h-13 lg:h-14" />
                         <div className="ml-auto flex items-center gap-2">
                             <DarkModeToggle />
                             <button

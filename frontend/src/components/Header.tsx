@@ -32,10 +32,10 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
             <div className="w-full px-0">
-                <div className="grid grid-cols-[auto,1fr,auto] items-center h-16 w-full gap-4">
+                <div className="grid grid-cols-[auto,1fr,auto] items-center h-14 sm:h-16 w-full gap-2 sm:gap-4">
                     <div className="flex items-center gap-4">
                         {!showBackButton ? (
-                            <Logo className="min-w-[160px]" iconClassName="h-13 sm:h-14" />
+                            <Logo className="min-w-[120px] sm:min-w-[160px] lg:min-w-[180px]" iconClassName="h-10 sm:h-13 lg:h-14" />
                         ) : (
                             <div className="flex items-center gap-2.5">
                                 <button
