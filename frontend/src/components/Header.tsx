@@ -31,7 +31,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full px-4 sm:px-6 lg:px-8">
                 <div className="flex h-14 items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         {!showBackButton ? (
